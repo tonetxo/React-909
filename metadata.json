@@ -1,0 +1,5 @@
+{
+  "name": "React TR-909 Groovebox",
+  "description": "A clone of the classic TR-909 drum machine built with React, TypeScript, and the Web Audio API. Sequence beats with 16 steps and synthesized drum sounds.",
+  "requestFramePermissions": []
+}
