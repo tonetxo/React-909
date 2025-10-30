@@ -14,7 +14,7 @@ export interface InstrumentParams {
   decay?: number;
   pitch?: number;
   // BD
-  tone?: number;
+  punch?: number;
   // Snare
   snappy?: number;
   // Hi-hat

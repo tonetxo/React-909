@@ -12,6 +12,7 @@ interface PatternControlsProps {
     onPaste: () => void;
     isClipboardEmpty: boolean;
     isPlaying: boolean;
+    onReset: () => void; // Add onReset prop
 }
 
 const PatternControls: React.FC<PatternControlsProps> = ({ 
@@ -24,7 +25,8 @@ const PatternControls: React.FC<PatternControlsProps> = ({
     onCopy,
     onPaste,
     isClipboardEmpty,
-    isPlaying
+    isPlaying,
+    onReset // Add onReset here
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,6 +105,13 @@ const PatternControls: React.FC<PatternControlsProps> = ({
                         aria-label="Import project from a JSON file"
                     >
                         Import
+                    </button>
+                    <button
+                        onClick={onReset}
+                        className="px-5 py-2 bg-red-500 text-white font-bold rounded-md hover:bg-red-400 transition-colors duration-200 shadow-lg h-10"
+                        aria-label="Reset all patterns and song to initial state"
+                    >
+                        Reset
                     </button>
                     <input
                         type="file"

@@ -421,6 +421,31 @@ const App: React.FC = () => {
     saveProject(patterns, newSequence, isSongLooping);
   };
 
+  const handleReset = () => {
+    if (isPlaying) setIsPlaying(false); // Stop playback
+
+    // Reset all state variables to their initial values
+    setInstruments(JSON.parse(JSON.stringify(INSTRUMENTS))); // Deep copy
+    setTempo(INITIAL_TEMPO);
+    setSwing(INITIAL_SWING);
+    setCurrentStep(null);
+    setSelectedInstrumentId(null);
+    setPatterns(Array(NUM_PATTERNS).fill(null));
+    setSelectedPatternIndex(0);
+    setClipboard(null);
+    setBasslinePattern(JSON.parse(JSON.stringify(INITIAL_BASSLINE_PATTERN))); // Deep copy
+    setVocoderParams(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS))); // Deep copy
+    setIsSongModeActive(false);
+    setSongSequence(Array(SONG_STEPS).fill(null));
+    setIsSongLooping(false);
+    setCurrentSongStep(null);
+
+    // Clear local storage
+    localStorage.removeItem(PROJECT_STORAGE_KEY);
+
+    alert("Application state reset to defaults!");
+  };
+
   // --- Bassline Handlers ---
   const handleBasslineParamChange = (param: keyof BasslineParams, value: number | Waveform) => {
     setBasslinePattern(prev => ({ ...prev, params: { ...prev.params, [param]: value }}));
@@ -482,7 +507,7 @@ const App: React.FC = () => {
         </header>
         <main className="space-y-6 flex flex-col items-center">
           <TransportControls isPlaying={isPlaying} onPlayToggle={handlePlayToggle} tempo={tempo} onTempoChange={handleTempoChange} swing={swing} onSwingChange={handleSwingChange} />
-          <PatternControls patterns={patterns} selectedPatternIndex={selectedPatternIndex} onLoad={handleLoadPattern} onSave={handleSavePattern} onExport={handleExportPatterns} onImport={handleImportPatterns} onCopy={handleCopyPattern} onPaste={handlePastePattern} isClipboardEmpty={clipboard === null} isPlaying={isPlaying} />
+          <PatternControls patterns={patterns} selectedPatternIndex={selectedPatternIndex} onLoad={handleLoadPattern} onSave={handleSavePattern} onExport={handleExportPatterns} onImport={handleImportPatterns} onCopy={handleCopyPattern} onPaste={handlePastePattern} isClipboardEmpty={clipboard === null} isPlaying={isPlaying} onReset={handleReset} />
           <SongSequencer sequence={songSequence} isActive={isSongModeActive} isLooping={isSongLooping} currentStep={currentSongStep} onToggle={handleToggleSongMode} onToggleLoop={handleToggleSongLoop} onStepClick={handleSongStepClick} onClear={handleClearSong} />
           
           {isLoaded && (

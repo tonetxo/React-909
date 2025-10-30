@@ -50,13 +50,16 @@ const ParameterControls: React.FC<ParameterControlsProps> = ({ instrument, onPar
                 {synthParamKeys.map((paramKey) => {
                     const def = instrument.paramDefinitions[paramKey];
                     if (!def) return null;
+                    // Only render slider if the parameter actually exists and is defined for this instrument
+                    const paramValue = instrument.params[paramKey];
+                    if (typeof paramValue === 'undefined') return null;
                     
                     return (
                         <ParamSlider
                             key={paramKey}
                             id={`${instrument.id}-${String(paramKey)}`}
                             def={def}
-                            value={instrument.params[paramKey] as number}
+                            value={paramValue as number}
                             onChange={(value) => onParamChange(instrument.id, paramKey, value)}
                         />
                     );

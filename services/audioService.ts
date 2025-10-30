@@ -129,7 +129,9 @@ const initAudio = () => {
 
     // Create Buses
     drumBus = audioContext.createGain();
+    drumBus.gain.value = 2.0; // Boost drum bus gain
     bassBus = audioContext.createGain();
+    bassBus.gain.value = 0.7;
     drumBus.connect(masterGain);
     bassBus.connect(masterGain);
 
@@ -316,11 +318,23 @@ export const playSound = (instrumentId: string, velocity: Velocity, params: Inst
 
       const pitch = params.pitch ?? 50;
       const decay = params.decay ?? 0.5;
+      const punch = params.punch ?? 0; // Default punch to 0
 
-      osc.frequency.setValueAtTime(pitch * 2, now);
-      osc.frequency.exponentialRampToValueAtTime(pitch, now + 0.05);
+      // Adjust pitch sweep based on punch
+      // Adjust pitch sweep based on punch
+      // A higher punch value should mean a higher starting pitch and a faster sweep
+      const pitchStartFactor = 2 + (punch * 10); // Max pitchStartFactor of 12 (pitch * 12)
+      const pitchStart = pitch * pitchStartFactor;
+
+      const minSweepTime = 0.005; // Minimum sweep time
+      const maxSweepTime = 0.05; // Base sweep time
+      // As punch increases, sweep time decreases from maxSweepTime towards minSweepTime
+      const pitchSweepTime = maxSweepTime - (punch * (maxSweepTime - minSweepTime));
+
+      osc.frequency.setValueAtTime(pitchStart, now);
+      osc.frequency.exponentialRampToValueAtTime(pitch, now + Math.max(minSweepTime, pitchSweepTime));
       
-      gain.gain.setValueAtTime(effectiveVolume, now);
+      gain.gain.setValueAtTime(effectiveVolume * 1.5, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + decay);
 
       osc.start(now);
@@ -433,7 +447,7 @@ export const playSound = (instrumentId: string, velocity: Velocity, params: Inst
         });
 
         const decay = params.decay ?? 0.1;
-        gain.gain.setValueAtTime(effectiveVolume * 0.3, now);
+        gain.gain.setValueAtTime(effectiveVolume * 0.1, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + decay);
         break;
     }

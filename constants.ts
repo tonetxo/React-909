@@ -56,15 +56,15 @@ export const INSTRUMENTS: Instrument[] = [
     params: {
       pitch: 50,
       decay: 0.5,
-      tone: 0.5,
-      reverbSend: 0.1,
-      delaySend: 0.1,
+      punch: 0,
+      reverbSend: 0,
+      delaySend: 0,
       flangerSend: 0,
     },
     paramDefinitions: {
       pitch: { label: 'Pitch', min: 20, max: 100, step: 0.1 },
       decay: { label: 'Decay', min: 0.1, max: 1, step: 0.01 },
-      tone: { label: 'Tone', min: 0, max: 1, step: 0.01 },
+      punch: { label: 'Punch', min: 0, max: 1, step: 0.01 },
       reverbSend: { label: 'Reverb', min: 0, max: 1, step: 0.01 },
       delaySend: { label: 'Delay', min: 0, max: 1, step: 0.01 },
       flangerSend: { label: 'Flanger', min: 0, max: 1, step: 0.01 },
@@ -81,8 +81,8 @@ export const INSTRUMENTS: Instrument[] = [
       pitch: 180,
       decay: 0.2,
       snappy: 0.5,
-      reverbSend: 0.2,
-      delaySend: 0.2,
+      reverbSend: 0,
+      delaySend: 0,
       flangerSend: 0,
     },
     paramDefinitions: {
@@ -104,8 +104,8 @@ export const INSTRUMENTS: Instrument[] = [
     params: {
       decay: 0.15,
       spread: 0.8,
-      reverbSend: 0.3,
-      delaySend: 0.15,
+      reverbSend: 0,
+      delaySend: 0,
       flangerSend: 0,
     },
     paramDefinitions: {
@@ -126,8 +126,8 @@ export const INSTRUMENTS: Instrument[] = [
     params: {
         pitch: 100,
         decay: 0.4,
-        reverbSend: 0.2,
-        delaySend: 0.3,
+        reverbSend: 0,
+        delaySend: 0,
         flangerSend: 0,
     },
     paramDefinitions: {
@@ -148,8 +148,8 @@ export const INSTRUMENTS: Instrument[] = [
     params: {
         pitch: 150,
         decay: 0.3,
-        reverbSend: 0.2,
-        delaySend: 0.3,
+        reverbSend: 0,
+        delaySend: 0,
         flangerSend: 0,
     },
     paramDefinitions: {
@@ -170,8 +170,8 @@ export const INSTRUMENTS: Instrument[] = [
     params: {
         pitch: 220,
         decay: 0.25,
-        reverbSend: 0.2,
-        delaySend: 0.3,
+        reverbSend: 0,
+        delaySend: 0,
         flangerSend: 0,
     },
     paramDefinitions: {
@@ -191,10 +191,9 @@ export const INSTRUMENTS: Instrument[] = [
     isSolo: false,
     params: {
       pitch: 300,
-      decay: 0.1,
       metal: 0.5,
-      reverbSend: 0.3,
-      delaySend: 0.3,
+      reverbSend: 0,
+      delaySend: 0,
       flangerSend: 0,
     },
     paramDefinitions: {
@@ -217,8 +216,8 @@ export const INSTRUMENTS: Instrument[] = [
       pitch: 300,
       decay: 0.5,
       metal: 0.5,
-      reverbSend: 0.3,
-      delaySend: 0.3,
+      reverbSend: 0,
+      delaySend: 0,
       flangerSend: 0,
     },
     paramDefinitions: {
@@ -242,8 +241,8 @@ export const INITIAL_BASSLINE_PATTERN: BasslinePattern = {
         decay: 0.3,
         accent: 0.5,
         volume: 0.25,
-        reverbSend: 0.1,
-        delaySend: 0.2,
+        reverbSend: 0,
+        delaySend: 0,
         flangerSend: 0,
     }
 };
