@@ -7,7 +7,7 @@ import BasslineSequencer from './components/BasslineSequencer';
 import VocoderControls from './components/VocoderControls';
 import { Instrument, Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Waveform, BasslinePattern, VocoderParams, VocoderCarrier } from './types';
 import { INSTRUMENTS, INITIAL_TEMPO, INITIAL_SWING, STEPS_PER_SEQUENCE, INITIAL_BASSLINE_PATTERN, BASSLINE_STEPS, INITIAL_VOCODER_PARAMS } from './constants';
-import { playSound, playBasslineNote, toggleVocoder, updateVocoderParams, startMicVisualizer, stopMicVisualizer } from './services/audioService';
+import { playSound, playBasslineNote, toggleVocoder, updateVocoderParams, startMicVisualizer, stopMicVisualizer, toggleNewVocoder, updateNewVocoderParams, switchToVocoder } from './services/audioService';
 
 const PROJECT_STORAGE_KEY = 'gemini-groove-project';
 const NUM_PATTERNS = 4;
@@ -95,6 +95,18 @@ const App: React.FC = () => {
   
   const [basslinePattern, setBasslinePattern] = useState<BasslinePattern>(JSON.parse(JSON.stringify(INITIAL_BASSLINE_PATTERN)));
   const [vocoderParams, setVocoderParams] = useState<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
+  const [selectedVocoderType, setSelectedVocoderType] = useState<'original' | 'new'>('original');
+  const [newVocoderParams, setNewVocoderParams] = useState({
+    carrierType: 'sawtooth' as Waveform,
+    carrierFreq: 110,
+    qFactor: 10,
+    voiceGain: 30,
+    attack: 0.01,
+    release: 0.05,
+    noiseGate: 5,
+    dryWet: 1.0,
+  });
+  
   const vocoderParamsRef = useRef<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
   vocoderParamsRef.current = vocoderParams;
 
@@ -464,12 +476,50 @@ const App: React.FC = () => {
       return newParams;
     });
     
-    // Update immediately after state change to ensure UI and audio are in sync
-    if (param === 'enabled') {
-      console.log(`Toggling vocoder: ${!!value}`);
-      toggleVocoder(!!value);
+    // Update the appropriate vocoder parameters
+    if (selectedVocoderType === 'original') {
+      updateVocoderParams({ ...vocoderParamsRef.current, [param]: value });
     }
-    updateVocoderParams({ ...vocoderParamsRef.current, [param]: value });
+    
+    // Update the new vocoder parameters if selected
+    if (selectedVocoderType === 'new') {
+      // Map VocoderParams keys to corresponding new vocoder params
+      switch (param) {
+        case 'mix':
+          handleNewVocoderParamChange('dryWet', 1.0 - value as number);
+          break;
+        // Add other mappings if needed
+      }
+    }
+    
+    // Toggle vocoders when enabled/disabled
+    if (param === 'enabled') {
+      console.log(`Toggling vocoder: ${!!value} (type: ${selectedVocoderType})`);
+      
+      // Use coordinated switching to manage mic sharing
+      if (!!value) {
+        switchToVocoder(selectedVocoderType);
+      } else {
+        // Disable whichever is currently active
+        if (selectedVocoderType === 'original') {
+          toggleVocoder(false);
+        } else {
+          toggleNewVocoder(false);
+        }
+      }
+    }
+  };
+
+  const handleNewVocoderParamChange = (param: string, value: number | Waveform) => {
+    setNewVocoderParams(prev => {
+      const newParams = { ...prev, [param]: value };
+      return newParams;
+    });
+    
+    // Only update the new vocoder parameters if it's selected
+    if (selectedVocoderType === 'new') {
+      updateNewVocoderParams({ [param]: value });
+    }
   };
 
   const handleBasslineNoteClick = (stepIndex: number, note: number) => {
@@ -523,6 +573,10 @@ const App: React.FC = () => {
                 onParamChange={handleVocoderParamChange}
                 startVisualizer={startMicVisualizer}
                 stopVisualizer={stopMicVisualizer}
+                selectedVocoderType={selectedVocoderType}
+                onVocoderTypeChange={setSelectedVocoderType}
+                newVocoderParams={newVocoderParams}
+                onNewVocoderParamChange={handleNewVocoderParamChange}
               />
             </>
           )}
