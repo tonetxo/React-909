@@ -250,12 +250,16 @@ const App: React.FC = () => {
 
         const stepDuration = 60000 / tempo / 4;
         let timeoutDuration = stepDuration;
-        if (swing > 0 && step % 2 !== 0) { // Apply swing to every second 16th note
-            const swingRatio = swing / 100;
-            timeoutDuration += stepDuration * swingRatio * 0.7;
-        } else if (swing > 0 && step % 2 === 0) {
-            const swingRatio = swing / 100;
-            timeoutDuration -= stepDuration * swingRatio * 0.7;
+        if (swing > 0) {
+            // Map swing (0-100) to a non-linear swing amount (e.g., 0-0.3 of a step duration)
+            // Using a cubic curve for a more musical feel: starts subtle, ramps up faster
+            const swingAmount = Math.pow(swing / 100, 3) * 0.3; // Max 30% of a step duration
+            
+            if (step % 2 !== 0) { // Apply swing to every second 16th note (off-beat)
+                timeoutDuration += stepDuration * swingAmount;
+            } else { // Compensate on the on-beat
+                timeoutDuration -= stepDuration * swingAmount;
+            }
         }
         timerRef.current = window.setTimeout(schedule, timeoutDuration);
     };
