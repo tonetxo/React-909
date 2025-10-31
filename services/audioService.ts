@@ -1,4 +1,4 @@
-import { Velocity, InstrumentParams, BasslineStep, BasslineParams, VocoderParams, VocoderCarrier } from '../types';
+import { Velocity, InstrumentParams, BasslineStep, BasslineParams, VocoderParams, VocoderCarrier, VocoderType } from '../types';
 
 let audioContext: AudioContext;
 let masterGain: GainNode;
@@ -20,6 +20,8 @@ let flangerDepth: GainNode;
 
 // --- Vocoder ---
 let vocoderWorkletNode: AudioWorkletNode | null = null;
+let vocoderWorkletNodeNew: AudioWorkletNode | null = null;
+let currentVocoderType: VocoderType = 'original';
 let carrierInput: GainNode | null = null;
 let currentCarrierType: VocoderCarrier | null = null;
 let vocoderEnabled = false;
@@ -80,7 +82,7 @@ const initAudio = async (): Promise<void> => {
 
         // --- Create Buses ---
         drumBus = audioContext.createGain();
-        drumBus.gain.value = 1.0;
+        drumBus.gain.value = 1.5; // Boost drum volume
         bassBus = audioContext.createGain();
         bassBus.gain.value = 1.0;
         drumBus.connect(masterGain);
@@ -101,6 +103,7 @@ const initAudio = async (): Promise<void> => {
         // --- Initialize Vocoder ---
         try {
             await audioContext.audioWorklet.addModule('services/vocoder-processor.js');
+            await audioContext.audioWorklet.addModule('services/vocoder-processor-new.js');
             carrierInput = audioContext.createGain();
             vocoderWorkletNode = new AudioWorkletNode(audioContext, 'vocoder-processor', {
                 numberOfInputs: 2,
@@ -110,11 +113,19 @@ const initAudio = async (): Promise<void> => {
                     sampleRate: audioContext.sampleRate
                 }
             });
+            vocoderWorkletNodeNew = new AudioWorkletNode(audioContext, 'vocoder-processor-new', {
+                numberOfInputs: 1,
+                numberOfOutputs: 1,
+                outputChannelCount: [1],
+                processorOptions: {
+                    sampleRate: audioContext.sampleRate
+                }
+            });
             // Connect carrier input to the worklet's second input
             carrierInput.connect(vocoderWorkletNode, 0, 1);
-            console.log("Vocoder AudioWorklet initialized successfully.");
+            console.log("Vocoder AudioWorklets initialized successfully.");
         } catch (e) {
-            console.error("Error loading or creating vocoder AudioWorklet:", e);
+            console.error("Error loading or creating vocoder AudioWorklets:", e);
             // App can continue without vocoder functionality
         }
 
@@ -122,6 +133,16 @@ const initAudio = async (): Promise<void> => {
         resolve();
     });
     return initializationPromise;
+};
+
+export const setVocoderType = (type: VocoderType) => {
+    if (type === currentVocoderType) return;
+    currentVocoderType = type;
+    if (vocoderEnabled) {
+        // If the vocoder is running, stop and restart it with the new type
+        toggleVocoder(false);
+        setTimeout(() => toggleVocoder(true), 100);
+    }
 };
 
 const setupEffects = () => {
@@ -429,7 +450,7 @@ export const playBasslineNote = (step: BasslineStep, prevStep: BasslineStep, par
 
 export const toggleVocoder = async (enabled: boolean) => {
     await ensureAudioInitialized();
-    if (!vocoderWorkletNode) {
+    if (!vocoderWorkletNode || !vocoderWorkletNodeNew) {
         console.error("Vocoder is not available.");
         alert("Vocoder processor failed to load. Please check the console for errors.");
         return;
@@ -453,17 +474,21 @@ export const toggleVocoder = async (enabled: boolean) => {
             micAnalyser = audioContext.createAnalyser();
             micAnalyser.fftSize = 256;
 
-            // Connect mic source to the vocoder's modulator input (input 0)
-            micSource.connect(vocoderWorkletNode, 0, 0);
+            if (currentVocoderType === 'original') {
+                // Connect mic source to the vocoder's modulator input (input 0)
+                micSource.connect(vocoderWorkletNode, 0, 0);
+                // Connect the vocoder output to the master gain
+                vocoderWorkletNode.connect(masterGain);
+            } else {
+                micSource.connect(vocoderWorkletNodeNew);
+                vocoderWorkletNodeNew.connect(masterGain);
+            }
             
             // Connect mic source to the analyser for visualization
             micSource.connect(micAnalyser);
 
-            // Connect the vocoder output to the master gain
-            vocoderWorkletNode.connect(masterGain);
-
             vocoderEnabled = true;
-            console.log("Microphone access granted. Vocoder enabled and connected.");
+            console.log(`Microphone access granted. Vocoder (${currentVocoderType}) enabled and connected.`);
 
         } catch (err) {
             console.error('Error accessing microphone:', err);
@@ -478,7 +503,12 @@ export const toggleVocoder = async (enabled: boolean) => {
 
         // Disconnect everything
         micSource.disconnect();
-        vocoderWorkletNode.disconnect(masterGain);
+        try {
+            vocoderWorkletNode.disconnect(masterGain);
+        } catch (e) {}
+        try {
+            vocoderWorkletNodeNew.disconnect(masterGain);
+        } catch (e) {}
 
         // Stop the microphone stream tracks
         micStream.getTracks().forEach(track => track.stop());
@@ -493,41 +523,60 @@ export const toggleVocoder = async (enabled: boolean) => {
 };
 
 export const updateVocoderParams = (params: VocoderParams) => {
-    if (!isInitialized || !vocoderWorkletNode || !carrierInput) return;
+    if (!isInitialized || !vocoderWorkletNode || !vocoderWorkletNodeNew || !carrierInput) return;
 
-    // Send all relevant parameters to the AudioWorkletNode
-    vocoderWorkletNode.port.postMessage({
-        type: 'updateParams',
-        payload: {
-            mix: params.mix,
-            formantShift: params.formantShift,
-            synthPitch: params.synthPitch,
-            carrier: params.carrier,
+    if (currentVocoderType === 'original') {
+        // Send all relevant parameters to the AudioWorkletNode
+        vocoderWorkletNode.port.postMessage({
+            type: 'updateParams',
+            payload: {
+                mix: params.mix,
+                formantShift: params.formantShift,
+                synthPitch: params.synthPitch,
+                carrier: params.carrier,
+            }
+        });
+    } else {
+        const now = audioContext.currentTime;
+        vocoderWorkletNodeNew.parameters.get('voiceGain').setTargetAtTime(params.voiceGain ?? 30, now, 0.01);
+        vocoderWorkletNodeNew.parameters.get('noiseGate').setTargetAtTime(params.noiseGate ?? 5, now, 0.01);
+        vocoderWorkletNodeNew.parameters.get('attack').setTargetAtTime(params.attack ?? 0.001, now, 0.01);
+        vocoderWorkletNodeNew.parameters.get('release').setTargetAtTime(params.release ?? 0.03, now, 0.01);
+        vocoderWorkletNodeNew.parameters.get('sibilance').setTargetAtTime(params.sibilance ?? 0.2, now, 0.01);
+        vocoderWorkletNodeNew.parameters.get('dryWet').setTargetAtTime(params.mix, now, 0.01); // Use mix for dryWet in new vocoder
+        vocoderWorkletNodeNew.parameters.get('qFactor').setTargetAtTime(params.qFactor ?? 20, now, 0.01);
+        vocoderWorkletNodeNew.parameters.get('carrierFreq').setTargetAtTime(params.carrierFreq ?? 110, now, 0.01);
+        
+        if (params.carrierWaveform) {
+            vocoderWorkletNodeNew.port.postMessage({ type: 'SET_CARRIER_WAVEFORM', value: params.carrierWaveform });
         }
-    });
+    }
 
     // Handle carrier routing, which happens outside the worklet
     if (params.carrier !== currentCarrierType) {
-        // Disconnect all previous sources from the carrierInput
-        const drumIds = ['kick', 'snare', 'clap', 'low_tom', 'mid_tom', 'hi_tom', 'hihat', 'openhat'];
-        drumIds.forEach(id => {
-            try { channelStrips.get(id)?.dry.disconnect(carrierInput); } catch(e) {}
-        });
-        try { channelStrips.get('bassline')?.dry.disconnect(carrierInput); } catch(e) {}
+        // Disconnect all possible previous sources from the carrierInput
+        if (currentCarrierType) {
+            if (currentCarrierType === 'drums' || currentCarrierType === 'both') {
+                try { drumBus.disconnect(carrierInput); } catch(e) {}
+            }
+            if (currentCarrierType === 'bass' || currentCarrierType === 'both') {
+                try { bassBus.disconnect(carrierInput); } catch(e) {}
+            }
+        }
 
         // Connect the new source
         switch (params.carrier) {
             case 'drums':
-                drumIds.forEach(id => channelStrips.get(id)?.dry.connect(carrierInput));
+                drumBus.connect(carrierInput);
                 console.log("Vocoder carrier set to: Drums");
                 break;
             case 'bass':
-                channelStrips.get('bassline')?.dry.connect(carrierInput);
+                bassBus.connect(carrierInput);
                 console.log("Vocoder carrier set to: Bass");
                 break;
             case 'both':
-                drumIds.forEach(id => channelStrips.get(id)?.dry.connect(carrierInput));
-                channelStrips.get('bassline')?.dry.connect(carrierInput);
+                drumBus.connect(carrierInput);
+                bassBus.connect(carrierInput);
                 console.log("Vocoder carrier set to: Both");
                 break;
             case 'synth':

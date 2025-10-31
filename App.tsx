@@ -5,9 +5,9 @@ import PatternControls from './components/PatternControls';
 import SongSequencer from './components/SongSequencer';
 import BasslineSequencer from './components/BasslineSequencer';
 import VocoderControls from './components/VocoderControls';
-import { Instrument, Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Waveform, BasslinePattern, VocoderParams, VocoderCarrier } from './types';
+import { Instrument, Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Waveform, BasslinePattern, VocoderParams, VocoderCarrier, VocoderType } from './types';
 import { INSTRUMENTS, INITIAL_TEMPO, INITIAL_SWING, STEPS_PER_SEQUENCE, INITIAL_BASSLINE_PATTERN, BASSLINE_STEPS, INITIAL_VOCODER_PARAMS } from './constants';
-import { playSound, playBasslineNote, toggleVocoder, updateVocoderParams, startMicVisualizer, stopMicVisualizer, ensureAudioInitialized } from './services/audioService';
+import { playSound, playBasslineNote, toggleVocoder, updateVocoderParams, startMicVisualizer, stopMicVisualizer, ensureAudioInitialized, setVocoderType as setAudioServiceVocoderType } from './services/audioService';
 
 const PROJECT_STORAGE_KEY = 'gemini-groove-project';
 const NUM_PATTERNS = 4;
@@ -94,6 +94,7 @@ const App: React.FC = () => {
   const [clipboard, setClipboard] = useState<Pattern | null>(null);
   
   const [basslinePattern, setBasslinePattern] = useState<BasslinePattern>(JSON.parse(JSON.stringify(INITIAL_BASSLINE_PATTERN)));
+  const [vocoderType, setVocoderType] = useState<VocoderType>('original');
   const [vocoderParams, setVocoderParams] = useState<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
 
   const vocoderParamsRef = useRef<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
@@ -474,6 +475,11 @@ const App: React.FC = () => {
     }
   };
 
+  const handleVocoderTypeChange = (type: VocoderType) => {
+    setVocoderType(type);
+    setAudioServiceVocoderType(type);
+  };
+
 
 
   const handleBasslineNoteClick = (stepIndex: number, note: number) => {
@@ -510,7 +516,7 @@ const App: React.FC = () => {
     <div className="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-start p-4 font-sans">
       <div className="w-full max-w-7xl mx-auto space-y-6">
         <header className="text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-yellow-400 tracking-tight">Gemini Groove</h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-yellow-400 tracking-tight">O Grove Son</h1>
           <p className="text-gray-400 mt-1">A web-based step sequencer</p>
         </header>
         <main className="space-y-6 flex flex-col items-center">
@@ -525,6 +531,8 @@ const App: React.FC = () => {
               <VocoderControls 
                 params={vocoderParams} 
                 onParamChange={handleVocoderParamChange}
+                vocoderType={vocoderType}
+                onVocoderTypeChange={handleVocoderTypeChange}
                 startVisualizer={startMicVisualizer}
                 stopVisualizer={stopMicVisualizer}
               />

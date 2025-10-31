@@ -18,6 +18,23 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        rollupOptions: {
+          input: {
+            main: path.resolve(__dirname, 'index.html'),
+            'vocoder-processor': path.resolve(__dirname, 'services/vocoder-processor.ts'),
+            'vocoder-processor-new': path.resolve(__dirname, 'services/vocoder-processor-new.ts'),
+          },
+          output: {
+            entryFileNames: (chunkInfo) => {
+              if (chunkInfo.name === 'vocoder-processor' || chunkInfo.name === 'vocoder-processor-new') {
+                return `services/[name].js`;
+              }
+              return `assets/[name]-[hash].js`;
+            },
+          },
+        },
       }
     };
 });

@@ -73,6 +73,8 @@ export interface Pattern {
 
 export type VocoderCarrier = 'drums' | 'bass' | 'both' | 'synth';
 
+export type VocoderType = 'original' | 'new';
+
 export interface VocoderParams {
   enabled: boolean;
   carrier: VocoderCarrier;
@@ -80,6 +82,17 @@ export interface VocoderParams {
   bands: number; // e.g. 8, 16, 32
   formantShift: number; // e.g. from -1 to 1 octave
   synthPitch: number; // MIDI note for internal synth
+
+  // New vocoder params
+  voiceGain?: number;
+  noiseGate?: number;
+  attack?: number;
+  release?: number;
+  sibilance?: number;
+  dryWet?: number;
+  qFactor?: number;
+  carrierFreq?: number;
+  carrierWaveform?: Waveform;
 }
 
 export interface ProjectData {
