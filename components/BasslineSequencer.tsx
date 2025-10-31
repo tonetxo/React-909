@@ -1,10 +1,11 @@
 import React from 'react';
-import { BasslinePattern, BasslineParams, Waveform } from '../types';
+import { BasslinePattern, BasslineParams, Waveform, TimeSignature } from '../types';
 import { BASSLINE_NOTES, BASSLINE_VELOCITY_COLORS } from '../constants';
 
 interface BasslineSequencerProps {
   basslinePattern: BasslinePattern;
   currentStep: number | null;
+  timeSignature: TimeSignature;
   onNoteClick: (stepIndex: number, note: number) => void;
   onParamChange: (param: keyof BasslineParams, value: number | Waveform) => void;
   onControlToggle: (stepIndex: number, control: 'slide') => void;
@@ -37,11 +38,13 @@ const ParamSlider: React.FC<{
 const BasslineSequencer: React.FC<BasslineSequencerProps> = ({ 
     basslinePattern, 
     currentStep,
+    timeSignature,
     onNoteClick,
     onParamChange,
     onControlToggle
 }) => {
   const { sequence, params } = basslinePattern;
+  const beatsPerMeasure = timeSignature[0];
   
   const paramDefinitions = {
       cutoff: { label: 'Cutoff', min: 100, max: 5000, step: 10 },
@@ -130,7 +133,7 @@ const BasslineSequencer: React.FC<BasslineSequencerProps> = ({
                     {BASSLINE_NOTES.map(({ note, isBlack }) => (
                         <div key={note} className="flex items-center gap-1">
                             {sequence.map((step, stepIndex) => {
-                                const isBeatSeparator = stepIndex > 0 && stepIndex % 4 === 0;
+                                const isBeatSeparator = stepIndex > 0 && stepIndex % beatsPerMeasure === 0;
                                 const isActive = step.note === note && step.velocity > 0;
                                 const isCurrent = currentStep === stepIndex;
 
@@ -154,7 +157,7 @@ const BasslineSequencer: React.FC<BasslineSequencerProps> = ({
                 {/* Control Row (Slide) */}
                 <div className="flex items-center gap-1 mt-2">
                     {sequence.map((step, stepIndex) => {
-                        const isBeatSeparator = stepIndex > 0 && stepIndex % 4 === 0;
+                        const isBeatSeparator = stepIndex > 0 && stepIndex % beatsPerMeasure === 0;
                         return (
                             <React.Fragment key={stepIndex}>
                                 {isBeatSeparator && <div className="w-1.5" />}

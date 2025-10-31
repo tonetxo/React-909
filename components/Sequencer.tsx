@@ -1,5 +1,5 @@
 import React from 'react';
-import { Instrument, InstrumentParams, Velocity } from '../types';
+import { Instrument, InstrumentParams, Velocity, TimeSignature } from '../types';
 import Step from './Step';
 import InstrumentControls from './InstrumentControls';
 import ParameterControls from './ParameterControls';
@@ -8,6 +8,7 @@ interface SequencerProps {
   instruments: Instrument[];
   currentStep: number | null;
   selectedInstrumentId: string | null;
+  timeSignature: TimeSignature;
   onStepClick: (instrumentIndex: number, stepIndex: number) => void;
   onInstrumentSelect: (instrumentId: string) => void;
   onMuteToggle: (instrumentId: string) => void;
@@ -20,6 +21,7 @@ const Sequencer: React.FC<SequencerProps> = ({
   instruments, 
   currentStep, 
   selectedInstrumentId,
+  timeSignature,
   onStepClick,
   onInstrumentSelect,
   onMuteToggle,
@@ -27,6 +29,9 @@ const Sequencer: React.FC<SequencerProps> = ({
   onParamChange,
   onVolumeChange,
 }) => {
+  const stepsPerBeat = timeSignature[1] === 8 ? 3 : 4;
+  const beatsPerMeasure = timeSignature[0];
+
   return (
     <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700 shadow-inner w-full">
       <div className="flex flex-col gap-y-1">
@@ -42,7 +47,7 @@ const Sequencer: React.FC<SequencerProps> = ({
               />
               <div className="flex items-center gap-1 ml-2 flex-grow">
                 {instrument.sequence.map((velocity, stepIndex) => {
-                  const isBeatSeparator = stepIndex > 0 && stepIndex % 4 === 0;
+                  const isBeatSeparator = stepIndex > 0 && stepIndex % beatsPerMeasure === 0;
                   return (
                     <React.Fragment key={stepIndex}>
                       {isBeatSeparator && <div className="w-2" />}

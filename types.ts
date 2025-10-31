@@ -64,9 +64,12 @@ export interface BasslinePattern {
   params: BasslineParams;
 }
 
+export type TimeSignature = [number, number]; // [beats, beatType]
+
 export interface Pattern {
   tempo: number;
   swing: number;
+  timeSignature: TimeSignature;
   instruments: Instrument[];
   bassline: BasslinePattern | null;
 }

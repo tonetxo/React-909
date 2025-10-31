@@ -1,7 +1,5 @@
 import { Instrument, Velocity, BasslinePattern, ParamDefinition } from './types';
 
-export const STEPS_PER_SEQUENCE = 16;
-export const BASSLINE_STEPS = 16;
 export const INITIAL_TEMPO = 120;
 export const INITIAL_SWING = 0;
 
@@ -43,13 +41,13 @@ export const VOLUME_PARAM_DEFINITION: ParamDefinition = {
   step: 0.01,
 };
 
-const defaultSequence = () => Array(STEPS_PER_SEQUENCE).fill(0 as Velocity);
+const defaultSequence = (steps: number) => Array(steps).fill(0 as Velocity);
 
-export const INSTRUMENTS: Instrument[] = [
+export const getInitialInstruments = (steps: number): Instrument[] => [
   {
     id: 'kick',
     name: 'Kick Drum',
-    sequence: defaultSequence(),
+    sequence: defaultSequence(steps),
     volume: 1,
     isMuted: false,
     isSolo: false,
@@ -73,7 +71,7 @@ export const INSTRUMENTS: Instrument[] = [
   {
     id: 'snare',
     name: 'Snare Drum',
-    sequence: defaultSequence(),
+    sequence: defaultSequence(steps),
     volume: 0.6,
     isMuted: false,
     isSolo: false,
@@ -97,7 +95,7 @@ export const INSTRUMENTS: Instrument[] = [
   {
     id: 'clap',
     name: 'Clap',
-    sequence: defaultSequence(),
+    sequence: defaultSequence(steps),
     volume: 0.5,
     isMuted: false,
     isSolo: false,
@@ -119,7 +117,7 @@ export const INSTRUMENTS: Instrument[] = [
   {
     id: 'low_tom',
     name: 'Low Tom',
-    sequence: defaultSequence(),
+    sequence: defaultSequence(steps),
     volume: 0.55,
     isMuted: false,
     isSolo: false,
@@ -141,7 +139,7 @@ export const INSTRUMENTS: Instrument[] = [
   {
     id: 'mid_tom',
     name: 'Mid Tom',
-    sequence: defaultSequence(),
+    sequence: defaultSequence(steps),
     volume: 0.55,
     isMuted: false,
     isSolo: false,
@@ -163,7 +161,7 @@ export const INSTRUMENTS: Instrument[] = [
   {
     id: 'hi_tom',
     name: 'High Tom',
-    sequence: defaultSequence(),
+    sequence: defaultSequence(steps),
     volume: 0.55,
     isMuted: false,
     isSolo: false,
@@ -185,7 +183,7 @@ export const INSTRUMENTS: Instrument[] = [
   {
     id: 'hihat',
     name: 'Closed Hi-hat',
-    sequence: defaultSequence(),
+    sequence: defaultSequence(steps),
     volume: 0.45,
     isMuted: false,
     isSolo: false,
@@ -208,7 +206,7 @@ export const INSTRUMENTS: Instrument[] = [
   {
     id: 'openhat',
     name: 'Open Hi-hat',
-    sequence: defaultSequence(),
+    sequence: defaultSequence(steps),
     volume: 0.45,
     isMuted: false,
     isSolo: false,
@@ -231,8 +229,8 @@ export const INSTRUMENTS: Instrument[] = [
   },
 ];
 
-export const INITIAL_BASSLINE_PATTERN: BasslinePattern = {
-    sequence: Array(BASSLINE_STEPS).fill(0).map(() => ({ note: null, velocity: 0, slide: false })),
+export const getInitialBasslinePattern = (steps: number): BasslinePattern => ({
+    sequence: Array(steps).fill(0).map(() => ({ note: null, velocity: 0, slide: false })),
     params: {
         waveform: 'sawtooth',
         cutoff: 800,
@@ -245,7 +243,7 @@ export const INITIAL_BASSLINE_PATTERN: BasslinePattern = {
         delaySend: 0,
         flangerSend: 0,
     }
-};
+});
 
 export const INITIAL_VOCODER_PARAMS: VocoderParams = {
     enabled: false,

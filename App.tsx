@@ -5,17 +5,17 @@ import PatternControls from './components/PatternControls';
 import SongSequencer from './components/SongSequencer';
 import BasslineSequencer from './components/BasslineSequencer';
 import VocoderControls from './components/VocoderControls';
-import { Instrument, Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Waveform, BasslinePattern, VocoderParams, VocoderCarrier, VocoderType } from './types';
-import { INSTRUMENTS, INITIAL_TEMPO, INITIAL_SWING, STEPS_PER_SEQUENCE, INITIAL_BASSLINE_PATTERN, BASSLINE_STEPS, INITIAL_VOCODER_PARAMS } from './constants';
+import { Instrument, Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Waveform, BasslinePattern, VocoderParams, VocoderCarrier, VocoderType, TimeSignature } from './types';
+import { getInitialInstruments, INITIAL_TEMPO, INITIAL_SWING, getInitialBasslinePattern, INITIAL_VOCODER_PARAMS } from './constants';
 import { playSound, playBasslineNote, toggleVocoder, updateVocoderParams, startMicVisualizer, stopMicVisualizer, ensureAudioInitialized, setVocoderType as setAudioServiceVocoderType } from './services/audioService';
 
 const PROJECT_STORAGE_KEY = 'gemini-groove-project';
 const NUM_PATTERNS = 4;
 const SONG_STEPS = 16;
 
-const mergeInstrumentData = (loadedInstruments: Instrument[]): Instrument[] => {
+const mergeInstrumentData = (loadedInstruments: Instrument[], steps: number): Instrument[] => {
     // Start with a fresh deep copy of the default instruments.
-    const newInstruments = JSON.parse(JSON.stringify(INSTRUMENTS));
+    const newInstruments = JSON.parse(JSON.stringify(getInitialInstruments(steps)));
 
     if (!Array.isArray(loadedInstruments)) {
         return newInstruments;
@@ -39,7 +39,7 @@ const mergeInstrumentData = (loadedInstruments: Instrument[]): Instrument[] => {
                 instrument.params = { ...instrument.params, ...loadedData.params };
             }
 
-            if (Array.isArray(loadedData.sequence) && loadedData.sequence.length === STEPS_PER_SEQUENCE) {
+            if (Array.isArray(loadedData.sequence) && loadedData.sequence.length === steps) {
                 instrument.sequence = loadedData.sequence;
             }
         }
@@ -49,14 +49,14 @@ const mergeInstrumentData = (loadedInstruments: Instrument[]): Instrument[] => {
 };
 
 
-const mergePatternData = (loadedPattern: Pattern | null): Pattern => {
-    const defaultBassline = JSON.parse(JSON.stringify(INITIAL_BASSLINE_PATTERN));
+const mergePatternData = (loadedPattern: Pattern | null, timeSignature: TimeSignature, steps: number): Pattern => {
+    const defaultBassline = JSON.parse(JSON.stringify(getInitialBasslinePattern(steps)));
     if (!loadedPattern) {
         return {
             tempo: INITIAL_TEMPO,
             swing: INITIAL_SWING,
-            // FIX: Pass an empty array to mergeInstrumentData as it expects an argument.
-            instruments: mergeInstrumentData([]),
+            timeSignature: timeSignature,
+            instruments: mergeInstrumentData([], steps),
             bassline: defaultBassline,
         };
     }
@@ -71,10 +71,11 @@ const mergePatternData = (loadedPattern: Pattern | null): Pattern => {
     return {
         tempo: loadedPattern.tempo,
         swing: loadedPattern.swing,
-        instruments: mergeInstrumentData(loadedPattern.instruments),
+        timeSignature: loadedPattern.timeSignature || timeSignature, // Use loaded or default
+        instruments: mergeInstrumentData(loadedPattern.instruments, steps),
         bassline: loadedPattern.bassline 
             ? {
-                sequence: migratedBasslineSequence.length === BASSLINE_STEPS ? migratedBasslineSequence : defaultBassline.sequence,
+                sequence: migratedBasslineSequence.length === steps ? migratedBasslineSequence : defaultBassline.sequence,
                 params: { ...defaultBassline.params, ...loadedPattern.bassline.params }
             }
             : defaultBassline,
@@ -82,18 +83,26 @@ const mergePatternData = (loadedPattern: Pattern | null): Pattern => {
 };
 
 const App: React.FC = () => {
-  const [instruments, setInstruments] = useState<Instrument[]>([]);
+  const [timeSignature, setTimeSignature] = useState<TimeSignature>([4, 4]);
+  const [stepsPerSequence, setStepsPerSequence] = useState<number>(16);
+  const [instruments, setInstruments] = useState<Instrument[]>(getInitialInstruments(stepsPerSequence));
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [tempo, setTempo] = useState<number>(INITIAL_TEMPO);
   const [swing, setSwing] = useState<number>(INITIAL_SWING);
   const [currentStep, setCurrentStep] = useState<number | null>(null);
   const [selectedInstrumentId, setSelectedInstrumentId] = useState<string | null>(null);
   
-  const [patterns, setPatterns] = useState<(Pattern | null)[]>(() => Array(NUM_PATTERNS).fill(null));
+  const [patterns, setPatterns] = useState<(Pattern | null)[]>(() => Array(NUM_PATTERNS).fill(null).map(() => ({
+    tempo: INITIAL_TEMPO,
+    swing: INITIAL_SWING,
+    timeSignature: [4, 4],
+    instruments: getInitialInstruments(stepsPerSequence),
+    bassline: getInitialBasslinePattern(stepsPerSequence),
+  })));
   const [selectedPatternIndex, setSelectedPatternIndex] = useState<number>(0);
   const [clipboard, setClipboard] = useState<Pattern | null>(null);
   
-  const [basslinePattern, setBasslinePattern] = useState<BasslinePattern>(JSON.parse(JSON.stringify(INITIAL_BASSLINE_PATTERN)));
+  const [basslinePattern, setBasslinePattern] = useState<BasslinePattern>(getInitialBasslinePattern(stepsPerSequence));
   const [vocoderType, setVocoderType] = useState<VocoderType>('original');
   const [vocoderParams, setVocoderParams] = useState<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
 
@@ -135,28 +144,35 @@ const App: React.FC = () => {
       if (savedProject) {
         const parsedProject = JSON.parse(savedProject) as ProjectData;
         if (parsedProject.patterns && parsedProject.song) {
-            const mergedPatterns = parsedProject.patterns.map(p => mergePatternData(p));
+            const mergedPatterns = parsedProject.patterns.map(p => {
+                const ts = p?.timeSignature || [4, 4];
+                const steps = ts[1] === 8 ? ts[0] * 2 : ts[0] * 4;
+                return mergePatternData(p, ts, steps);
+            });
             setPatterns(mergedPatterns);
             setSongSequence(parsedProject.song.sequence ?? Array(SONG_STEPS).fill(null));
             setIsSongLooping(parsedProject.song.isLooping ?? false);
             
             const currentPattern = mergedPatterns[selectedPatternIndex];
-            setTempo(currentPattern.tempo);
-            setSwing(currentPattern.swing);
-            setInstruments(currentPattern.instruments);
-            setBasslinePattern(currentPattern.bassline!);
+            if (currentPattern) {
+                setTempo(currentPattern.tempo);
+                setSwing(currentPattern.swing);
+                setTimeSignature(currentPattern.timeSignature);
+                setInstruments(currentPattern.instruments);
+                setBasslinePattern(currentPattern.bassline!);
+            }
         } else {
             throw new Error("Invalid project data");
         }
       } else {
-        const mergedPattern = mergePatternData(null);
+        const mergedPattern = mergePatternData(null, timeSignature, stepsPerSequence);
         setPatterns([mergedPattern, null, null, null]);
         setInstruments(mergedPattern.instruments);
         setBasslinePattern(mergedPattern.bassline!);
       }
     } catch (error) {
         console.error("Failed to load project:", error);
-        const mergedPattern = mergePatternData(null);
+        const mergedPattern = mergePatternData(null, timeSignature, stepsPerSequence);
         setPatterns([mergedPattern, null, null, null]);
         setInstruments(mergedPattern.instruments);
         setBasslinePattern(mergedPattern.bassline!);
@@ -186,20 +202,25 @@ const App: React.FC = () => {
     if (currentBassline) {
         const { sequence, params } = currentBassline;
         const step = sequence[stepToSchedule];
-        const prevStep = sequence[(stepToSchedule - 1 + BASSLINE_STEPS) % BASSLINE_STEPS];
+        const prevStep = sequence[(stepToSchedule - 1 + stepsPerSequence) % stepsPerSequence];
         playBasslineNote(step, prevStep, params);
     }
   }, []);
 
   const loadPatternState = useCallback((patternIndex: number, songStepIndex: number | null = null) => {
     const patternToLoad = patterns[patternIndex];
-    const mergedPattern = mergePatternData(patternToLoad);
+    const ts = patternToLoad?.timeSignature || [4, 4];
+    const steps = ts[1] === 8 ? ts[0] * 2 : ts[0] * 4;
+
+    const mergedPattern = mergePatternData(patternToLoad, ts, steps);
     
     setSelectedPatternIndex(patternIndex);
     setCurrentSongStep(songStepIndex);
     
     setTempo(mergedPattern.tempo);
     setSwing(mergedPattern.swing);
+    setTimeSignature(mergedPattern.timeSignature);
+    setStepsPerSequence(steps);
     setInstruments(mergedPattern.instruments);
     setBasslinePattern(mergedPattern.bassline!);
     setCurrentStep(null);
@@ -222,7 +243,7 @@ const App: React.FC = () => {
     let step = currentStep !== null ? currentStep : -1;
 
     const schedule = () => {
-        step = (step + 1) % STEPS_PER_SEQUENCE;
+        step = (step + 1) % stepsPerSequence;
         
         if (isSongModeActive && step === 0) {
             const findNextPlayableStep = (startAt: number): { index: number; pattern: number } | null => {
@@ -297,9 +318,48 @@ const App: React.FC = () => {
   const handleTempoChange = (e: React.ChangeEvent<HTMLInputElement>) => setTempo(Number(e.target.value));
   const handleSwingChange = (e: React.ChangeEvent<HTMLInputElement>) => setSwing(Number(e.target.value));
 
+  useEffect(() => {
+    const [beats, beatType] = timeSignature;
+    const newStepsPerSequence = beatType === 8 ? beats * 2 : beats * 4;
+    setStepsPerSequence(newStepsPerSequence);
+  }, [timeSignature]);
+
+  const handleTimeSignatureChange = (newTimeSignature: TimeSignature) => {
+    setTimeSignature(newTimeSignature);
+
+    const [beats, beatType] = newTimeSignature;
+    const newSteps = beatType === 8 ? beats * 2 : beats * 4;
+
+    const resizeSequence = (sequence: any[]) => {
+      const currentLength = sequence.length;
+      if (currentLength === newSteps) {
+        return sequence;
+      }
+      if (currentLength > newSteps) {
+        return sequence.slice(0, newSteps);
+      }
+      // Pad with default values
+      const newSequence = [...sequence];
+      for (let i = currentLength; i < newSteps; i++) {
+        newSequence.push(0);
+      }
+      return newSequence;
+    };
+
+    setInstruments(prev => prev.map(instrument => ({
+      ...instrument,
+      sequence: resizeSequence(instrument.sequence),
+    })));
+
+    setBasslinePattern(prev => ({
+      ...prev,
+      sequence: resizeSequence(prev.sequence).map(s => typeof s === 'number' ? { note: null, velocity: 0, slide: false } : s),
+    }));
+  };
+
   const updateCurrentPattern = (updater: (pattern: Pattern) => Pattern) => {
       const newPatterns = [...patterns];
-      const currentPattern = newPatterns[selectedPatternIndex] ?? mergePatternData(null);
+      const currentPattern = newPatterns[selectedPatternIndex] ?? mergePatternData(null, timeSignature, stepsPerSequence);
       newPatterns[selectedPatternIndex] = updater(currentPattern);
       setPatterns(newPatterns);
       return newPatterns;
@@ -330,7 +390,7 @@ const App: React.FC = () => {
   };
 
   const handleSavePattern = () => {
-    const newPattern: Pattern = { tempo, swing, instruments, bassline: basslinePattern };
+    const newPattern: Pattern = { tempo, swing, timeSignature, instruments, bassline: basslinePattern };
     const newPatterns = [...patterns];
     newPatterns[selectedPatternIndex] = newPattern;
     setPatterns(newPatterns);
@@ -341,7 +401,7 @@ const App: React.FC = () => {
     setIsSongModeActive(false);
     loadPatternState(index);
   };
-  const handleCopyPattern = () => setClipboard({ tempo, swing, instruments, bassline: basslinePattern });
+  const handleCopyPattern = () => setClipboard({ tempo, swing, timeSignature, instruments, bassline: basslinePattern });
   const handlePastePattern = () => {
     if (clipboard) {
       const newPatterns = [...patterns];
@@ -349,9 +409,10 @@ const App: React.FC = () => {
       setPatterns(newPatterns);
       saveProject(newPatterns, songSequence, isSongLooping);
       // Also load the pasted pattern into the active state
-      const merged = mergePatternData(clipboard);
+      const merged = mergePatternData(clipboard, timeSignature, stepsPerSequence);
       setTempo(merged.tempo);
       setSwing(merged.swing);
+      setTimeSignature(merged.timeSignature);
       setInstruments(merged.instruments);
       setBasslinePattern(merged.bassline!);
     }
@@ -377,7 +438,7 @@ const App: React.FC = () => {
             if (!projectData.patterns || !projectData.song) throw new Error("Invalid project file");
             
             const looping = projectData.song.isLooping ?? false;
-            const mergedPatterns = projectData.patterns.map(p => mergePatternData(p));
+            const mergedPatterns = projectData.patterns.map(p => mergePatternData(p, p?.timeSignature || [4, 4], p?.timeSignature ? (p.timeSignature[1] === 8 ? p.timeSignature[0] * 2 : p.timeSignature[0] * 4) : 16));
             setPatterns(mergedPatterns);
             setSongSequence(projectData.song.sequence);
             setIsSongLooping(looping);
@@ -435,15 +496,17 @@ const App: React.FC = () => {
     if (isPlaying) setIsPlaying(false); // Stop playback
 
     // Reset all state variables to their initial values
-    setInstruments(JSON.parse(JSON.stringify(INSTRUMENTS))); // Deep copy
+    setInstruments(getInitialInstruments(16)); // Deep copy
     setTempo(INITIAL_TEMPO);
     setSwing(INITIAL_SWING);
+    setTimeSignature([4, 4]);
+    setStepsPerSequence(16);
     setCurrentStep(null);
     setSelectedInstrumentId(null);
     setPatterns(Array(NUM_PATTERNS).fill(null));
     setSelectedPatternIndex(0);
     setClipboard(null);
-    setBasslinePattern(JSON.parse(JSON.stringify(INITIAL_BASSLINE_PATTERN))); // Deep copy
+    setBasslinePattern(getInitialBasslinePattern(16)); // Deep copy
     setVocoderParams(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS))); // Deep copy
     setIsSongModeActive(false);
     setSongSequence(Array(SONG_STEPS).fill(null));
@@ -520,14 +583,14 @@ const App: React.FC = () => {
           <p className="text-gray-400 mt-1">A web-based step sequencer</p>
         </header>
         <main className="space-y-6 flex flex-col items-center">
-          <TransportControls isPlaying={isPlaying} onPlayToggle={handlePlayToggle} tempo={tempo} onTempoChange={handleTempoChange} swing={swing} onSwingChange={handleSwingChange} />
+          <TransportControls isPlaying={isPlaying} onPlayToggle={handlePlayToggle} tempo={tempo} onTempoChange={handleTempoChange} swing={swing} onSwingChange={handleSwingChange} timeSignature={timeSignature} onTimeSignatureChange={handleTimeSignatureChange} />
           <PatternControls patterns={patterns} selectedPatternIndex={selectedPatternIndex} onLoad={handleLoadPattern} onSave={handleSavePattern} onExport={handleExportPatterns} onImport={handleImportPatterns} onCopy={handleCopyPattern} onPaste={handlePastePattern} isClipboardEmpty={clipboard === null} isPlaying={isPlaying} onReset={handleReset} />
           <SongSequencer sequence={songSequence} isActive={isSongModeActive} isLooping={isSongLooping} currentStep={currentSongStep} onToggle={handleToggleSongMode} onToggleLoop={handleToggleSongLoop} onStepClick={handleSongStepClick} onClear={handleClearSong} />
           
           {isLoaded && (
             <>
-              <Sequencer instruments={instruments} currentStep={currentStep} selectedInstrumentId={selectedInstrumentId} onStepClick={handleStepClick} onInstrumentSelect={handleInstrumentSelect} onMuteToggle={handleMuteToggle} onSoloToggle={handleSoloToggle} onParamChange={handleParamChange} onVolumeChange={handleVolumeChange} />
-              <BasslineSequencer basslinePattern={basslinePattern} currentStep={currentStep} onNoteClick={handleBasslineNoteClick} onParamChange={handleBasslineParamChange} onControlToggle={handleBasslineControlToggle} />
+              <Sequencer instruments={instruments} currentStep={currentStep} selectedInstrumentId={selectedInstrumentId} timeSignature={timeSignature} onStepClick={handleStepClick} onInstrumentSelect={handleInstrumentSelect} onMuteToggle={handleMuteToggle} onSoloToggle={handleSoloToggle} onParamChange={handleParamChange} onVolumeChange={handleVolumeChange} />
+              <BasslineSequencer basslinePattern={basslinePattern} currentStep={currentStep} timeSignature={timeSignature} onNoteClick={handleBasslineNoteClick} onParamChange={handleBasslineParamChange} onControlToggle={handleBasslineControlToggle} />
               <VocoderControls 
                 params={vocoderParams} 
                 onParamChange={handleVocoderParamChange}

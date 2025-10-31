@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { TimeSignature } from '../types';
+
 interface TransportControlsProps {
   isPlaying: boolean;
   onPlayToggle: () => void;
@@ -7,6 +9,8 @@ interface TransportControlsProps {
   onTempoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   swing: number;
   onSwingChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  timeSignature: TimeSignature;
+  onTimeSignatureChange: (timeSignature: TimeSignature) => void;
 }
 
 const PlayIcon = () => (
@@ -21,12 +25,36 @@ const StopIcon = () => (
     </svg>
 );
 
-const TransportControls: React.FC<TransportControlsProps> = ({ isPlaying, onPlayToggle, tempo, onTempoChange, swing, onSwingChange }) => {
+const TransportControls: React.FC<TransportControlsProps> = ({ 
+  isPlaying, 
+  onPlayToggle, 
+  tempo, 
+  onTempoChange, 
+  swing, 
+  onSwingChange,
+  timeSignature,
+  onTimeSignatureChange
+}) => {
+  const timeSignatures: { label: string; value: TimeSignature }[] = [
+    { label: '4/4', value: [4, 4] },
+    { label: '3/4', value: [3, 4] },
+    { label: '5/4', value: [5, 4] },
+    { label: '6/8', value: [6, 8] },
+    { label: '7/8', value: [7, 8] },
+    { label: '9/8', value: [9, 8] },
+    { label: '12/8', value: [12, 8] },
+  ];
+
+  const handleTimeSignatureChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const [beats, beatType] = e.target.value.split(',').map(Number);
+    onTimeSignatureChange([beats, beatType] as TimeSignature);
+  };
+
   return (
     <div className="grid grid-cols-[auto_1fr] items-center gap-x-6 gap-y-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
         <button
             onClick={onPlayToggle}
-            className="row-span-2 px-6 py-3 bg-yellow-500 text-gray-900 font-bold rounded-md hover:bg-yellow-400 transition-colors duration-200 flex items-center justify-center space-x-2 shadow-lg h-full"
+            className="row-span-3 px-6 py-3 bg-yellow-500 text-gray-900 font-bold rounded-md hover:bg-yellow-400 transition-colors duration-200 flex items-center justify-center space-x-2 shadow-lg h-full"
             aria-label={isPlaying ? 'Stop' : 'Play'}
         >
             {isPlaying ? <StopIcon /> : <PlayIcon />}
@@ -34,7 +62,7 @@ const TransportControls: React.FC<TransportControlsProps> = ({ isPlaying, onPlay
         </button>
 
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3">
-            <label htmlFor="tempo" className="text-gray-300 font-medium w-12 text-right">Tempo</label>
+            <label htmlFor="tempo" className="text-gray-300 font-medium w-16 text-right">Tempo</label>
             <input
             type="range"
             id="tempo"
@@ -48,7 +76,7 @@ const TransportControls: React.FC<TransportControlsProps> = ({ isPlaying, onPlay
         </div>
       
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3">
-            <label htmlFor="swing" className="text-gray-300 font-medium w-12 text-right">Swing</label>
+            <label htmlFor="swing" className="text-gray-300 font-medium w-16 text-right">Swing</label>
             <input
             type="range"
             id="swing"
@@ -59,6 +87,21 @@ const TransportControls: React.FC<TransportControlsProps> = ({ isPlaying, onPlay
             className="w-full accent-yellow-500"
             />
             <span className="text-lg font-mono bg-gray-800 text-white px-3 py-1 rounded-md w-24 text-center">{swing}%</span>
+        </div>
+
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3">
+            <label htmlFor="time-signature" className="text-gray-300 font-medium w-16 text-right">Time Sig</label>
+            <select
+              id="time-signature"
+              value={timeSignature.join(',')}
+              onChange={handleTimeSignatureChange}
+              className="bg-gray-800 border border-gray-600 text-white text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block w-full p-2.5"
+            >
+              {timeSignatures.map(ts => (
+                <option key={ts.label} value={ts.value.join(',')}>{ts.label}</option>
+              ))}
+            </select>
+            <span className="text-lg font-mono bg-gray-800 text-white px-3 py-1 rounded-md w-24 text-center">{timeSignature.join('/')}</span>
         </div>
     </div>
   );
