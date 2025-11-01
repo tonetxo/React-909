@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { SequencerEngine } from './sequencer/SequencerEngine';
 import Sequencer from './components/Sequencer';
 import TransportControls from './components/TransportControls';
 import PatternControls from './components/PatternControls';
@@ -115,14 +116,7 @@ const App: React.FC = () => {
   const [isSongLooping, setIsSongLooping] = useState<boolean>(false);
   const [currentSongStep, setCurrentSongStep] = useState<number | null>(null);
 
-  const timerRef = useRef<number>();
-  const instrumentsRef = useRef(instruments);
-  instrumentsRef.current = instruments;
-  const basslinePatternRef = useRef(basslinePattern);
-  basslinePatternRef.current = basslinePattern;
-  
-  const selectedPatternIndexRef = useRef(selectedPatternIndex);
-  selectedPatternIndexRef.current = selectedPatternIndex;
+
 
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   
@@ -181,31 +175,7 @@ const App: React.FC = () => {
     }
   }, []);
   
-  const playScheduledNote = useCallback((stepToSchedule: number) => {
-    const instruments = instrumentsRef.current;
-    const soloInstrument = instruments.find(inst => inst.isSolo);
 
-    instruments.forEach(instrument => {
-        const velocity = instrument.sequence[stepToSchedule];
-        if (velocity > 0) {
-            const canPlay = !soloInstrument 
-                ? !instrument.isMuted 
-                : instrument.id === soloInstrument.id;
-            
-            if (canPlay) {
-                playSound(instrument.id, velocity as Velocity, instrument.params, instrument.volume);
-            }
-        }
-    });
-
-    const currentBassline = basslinePatternRef.current;
-    if (currentBassline) {
-        const { sequence, params } = currentBassline;
-        const step = sequence[stepToSchedule];
-        const prevStep = sequence[(stepToSchedule - 1 + stepsPerSequence) % stepsPerSequence];
-        playBasslineNote(step, prevStep, params);
-    }
-  }, []);
 
   const loadPatternState = useCallback((patternIndex: number, songStepIndex: number | null = null) => {
     const patternToLoad = patterns[patternIndex];
@@ -226,93 +196,64 @@ const App: React.FC = () => {
     setCurrentStep(null);
   }, [patterns]);
 
+  const sequencerEngineRef = useRef<SequencerEngine | null>(null);
+  if (sequencerEngineRef.current === null) {
+    sequencerEngineRef.current = new SequencerEngine();
+  }
+  const sequencerEngine = sequencerEngineRef.current;
+
   useEffect(() => {
-    // Initialize vocoder params when component mounts
+    sequencerEngine.setCallbacks({
+      onStepChange: setCurrentStep,
+      onSongStepChange: setCurrentSongStep,
+      onPatternChange: (patternIndex) => {
+        loadPatternState(patternIndex);
+      },
+      onPlaybackEnd: () => setIsPlaying(false),
+      onTimeSignatureChange: setTimeSignature,
+    });
+  }, [sequencerEngine, loadPatternState]);
+
+  useEffect(() => {
+    sequencerEngine.setPatterns(patterns);
+  }, [sequencerEngine, patterns]);
+
+  useEffect(() => {
+    sequencerEngine.setSongSequence(songSequence);
+  }, [sequencerEngine, songSequence]);
+
+  useEffect(() => {
+    sequencerEngine.setSongLooping(isSongLooping);
+  }, [sequencerEngine, isSongLooping]);
+
+  useEffect(() => {
+    sequencerEngine.setSongMode(isSongModeActive);
+  }, [sequencerEngine, isSongModeActive]);
+
+  // This effect syncs the main app state to the engine when not playing
+  useEffect(() => {
+    if (!isPlaying) {
+      const currentPattern = patterns[selectedPatternIndex];
+      if (currentPattern) {
+        sequencerEngine.loadPattern(selectedPatternIndex);
+      }
+    }
+  }, [isPlaying, selectedPatternIndex, patterns, sequencerEngine]);
+  
+  // --- Vocoder Initialization ---
+  useEffect(() => {
     updateVocoderParams(vocoderParams);
     if (INITIAL_VOCODER_PARAMS.enabled) {
-      toggleVocoder(true);
+      toggleVocoder(true).catch(() => {
+        setVocoderParams(prev => ({...prev, enabled: false}));
+      });
     }
-    
-    if (!isPlaying || !isLoaded) {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      setCurrentStep(null);
-      if (!isPlaying) setCurrentSongStep(null);
-      return;
-    }
-
-    let step = currentStep !== null ? currentStep : -1;
-
-    const schedule = () => {
-        step = (step + 1) % stepsPerSequence;
-        
-        if (isSongModeActive && step === 0) {
-            const findNextPlayableStep = (startAt: number): { index: number; pattern: number } | null => {
-                for (let i = startAt; i < SONG_STEPS; i++) {
-                    if (songSequence[i] !== null) return { index: i, pattern: songSequence[i]! };
-                }
-                return null;
-            };
-
-            const nextStepIndex = (currentSongStep !== null ? currentSongStep : -1) + 1;
-            let nextPlayable = findNextPlayableStep(nextStepIndex);
-
-            if (!nextPlayable && isSongLooping) {
-                nextPlayable = findNextPlayableStep(0);
-            }
-            
-            if (nextPlayable) {
-                loadPatternState(nextPlayable.pattern, nextPlayable.index);
-            } else {
-                setIsPlaying(false);
-                return;
-            }
-        }
-
-        playScheduledNote(step);
-        setCurrentStep(step);
-
-        const stepDuration = 60000 / tempo / 4;
-        let timeoutDuration = stepDuration;
-        if (swing > 0) {
-            // Map swing (0-100) to a non-linear swing amount (e.g., 0-0.3 of a step duration)
-            // Using a cubic curve for a more musical feel: starts subtle, ramps up faster
-            const swingAmount = Math.pow(swing / 100, 3) * 0.3; // Max 30% of a step duration
-            
-            if (step % 2 !== 0) { // Apply swing to every second 16th note (off-beat)
-                timeoutDuration += stepDuration * swingAmount;
-            } else { // Compensate on the on-beat
-                timeoutDuration -= stepDuration * swingAmount;
-            }
-        }
-        timerRef.current = window.setTimeout(schedule, timeoutDuration);
-    };
-    
-    schedule();
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [isPlaying, tempo, swing, playScheduledNote, isLoaded, isSongModeActive, songSequence, isSongLooping, currentSongStep, loadPatternState]);
+  }, []); // Run only once on mount
 
   const handlePlayToggle = async () => {
     if (!isLoaded) return;
-
-    // Ensure the audio context is running, requires user interaction
-    await ensureAudioInitialized();
-
-    if (isPlaying) {
-        setIsPlaying(false);
-    } else {
-        if (isSongModeActive) {
-            const firstPlayable = songSequence.findIndex(p => p !== null);
-            if (firstPlayable !== -1) {
-                loadPatternState(songSequence[firstPlayable]!, firstPlayable);
-                setIsPlaying(true);
-            }
-        } else {
-            setIsPlaying(true);
-        }
-    }
+    await sequencerEngine.togglePlayback(tempo, swing);
+    setIsPlaying(sequencerEngine.isPlayingState());
   };
 
   const handleTempoChange = (e: React.ChangeEvent<HTMLInputElement>) => setTempo(Number(e.target.value));
@@ -396,23 +337,34 @@ const App: React.FC = () => {
     setPatterns(newPatterns);
     saveProject(newPatterns, songSequence, isSongLooping);
   };
-  const handleLoadPattern = (index: number) => {
-    if (isPlaying) setIsPlaying(false);
+  const handleLoadPattern = async (index: number) => {
+    if (isPlaying) {
+        await sequencerEngine.loadPattern(index);
+    } else {
+        loadPatternState(index);
+    }
     setIsSongModeActive(false);
-    loadPatternState(index);
   };
   const handleCopyPattern = () => setClipboard({ tempo, swing, timeSignature, instruments, bassline: basslinePattern });
   const handlePastePattern = () => {
     if (clipboard) {
+      // 1. Update the patterns array
       const newPatterns = [...patterns];
-      newPatterns[selectedPatternIndex] = JSON.parse(JSON.stringify(clipboard));
+      // Deep copy the clipboard pattern to avoid reference issues
+      const pastedPattern = JSON.parse(JSON.stringify(clipboard));
+      newPatterns[selectedPatternIndex] = pastedPattern;
       setPatterns(newPatterns);
       saveProject(newPatterns, songSequence, isSongLooping);
-      // Also load the pasted pattern into the active state
-      const merged = mergePatternData(clipboard, timeSignature, stepsPerSequence);
+
+      // 2. Load the state from the just-pasted pattern
+      const ts = pastedPattern.timeSignature || [4, 4];
+      const steps = ts[1] === 8 ? ts[0] * 2 : ts[0] * 4;
+      const merged = mergePatternData(pastedPattern, ts, steps);
+      
       setTempo(merged.tempo);
       setSwing(merged.swing);
       setTimeSignature(merged.timeSignature);
+      setStepsPerSequence(steps); // This is important!
       setInstruments(merged.instruments);
       setBasslinePattern(merged.bassline!);
     }
@@ -450,6 +402,7 @@ const App: React.FC = () => {
             if (currentPattern) {
                 setTempo(currentPattern.tempo);
                 setSwing(currentPattern.swing);
+                setTimeSignature(currentPattern.timeSignature);
                 setInstruments(currentPattern.instruments);
                 setBasslinePattern(currentPattern.bassline!);
             }

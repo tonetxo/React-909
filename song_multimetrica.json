@@ -1,0 +1,2605 @@
+{
+  "patterns": [
+    {
+      "tempo": 120,
+      "swing": 0,
+      "timeSignature": [
+        5,
+        4
+      ],
+      "instruments": [
+        {
+          "id": "kick",
+          "name": "Kick Drum",
+          "sequence": [
+            3,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            1,
+            3,
+            0,
+            0,
+            1,
+            0,
+            3,
+            0,
+            0,
+            2,
+            0
+          ],
+          "volume": 1,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 50,
+            "decay": 0.5,
+            "punch": 0,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 20,
+              "max": 100,
+              "step": 0.1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 1,
+              "step": 0.01
+            },
+            "punch": {
+              "label": "Punch",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "snare",
+          "name": "Snare Drum",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          "volume": 0.6,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 180,
+            "decay": 0.2,
+            "snappy": 0.5,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 80,
+              "max": 300,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.5,
+              "step": 0.01
+            },
+            "snappy": {
+              "label": "Snappy",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "clap",
+          "name": "Clap",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "volume": 0.5,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "decay": 0.15,
+            "spread": 0.8,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.3,
+              "step": 0.01
+            },
+            "spread": {
+              "label": "Spread",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "low_tom",
+          "name": "Low Tom",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.55,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 100,
+            "decay": 0.4,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 60,
+              "max": 150,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.8,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "mid_tom",
+          "name": "Mid Tom",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.55,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 150,
+            "decay": 0.3,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 100,
+              "max": 250,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.6,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "hi_tom",
+          "name": "High Tom",
+          "sequence": [
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.55,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 220,
+            "decay": 0.25,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 150,
+              "max": 350,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.5,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "hihat",
+          "name": "Closed Hi-hat",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "volume": 0.45,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 300,
+            "metal": 0.5,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 200,
+              "max": 800,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.01,
+              "max": 0.2,
+              "step": 0.001
+            },
+            "metal": {
+              "label": "Metal",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "openhat",
+          "name": "Open Hi-hat",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.45,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 300,
+            "decay": 0.5,
+            "metal": 0.5,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 200,
+              "max": 800,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 1,
+              "step": 0.01
+            },
+            "metal": {
+              "label": "Metal",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        }
+      ],
+      "bassline": {
+        "sequence": [
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          }
+        ],
+        "params": {
+          "waveform": "sawtooth",
+          "cutoff": 800,
+          "resonance": 5,
+          "envelopeAmount": 2000,
+          "decay": 0.3,
+          "accent": 0.5,
+          "volume": 0.25,
+          "reverbSend": 0,
+          "delaySend": 0,
+          "flangerSend": 0
+        }
+      }
+    },
+    {
+      "tempo": 120,
+      "swing": 0,
+      "timeSignature": [
+        6,
+        8
+      ],
+      "instruments": [
+        {
+          "id": "kick",
+          "name": "Kick Drum",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 1,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 50,
+            "decay": 0.5,
+            "punch": 0,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 20,
+              "max": 100,
+              "step": 0.1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 1,
+              "step": 0.01
+            },
+            "punch": {
+              "label": "Punch",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "snare",
+          "name": "Snare Drum",
+          "sequence": [
+            2,
+            0,
+            0,
+            2,
+            0,
+            0,
+            2,
+            0,
+            0,
+            2,
+            0,
+            0
+          ],
+          "volume": 0.6,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 180,
+            "decay": 0.2,
+            "snappy": 0.5,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 80,
+              "max": 300,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.5,
+              "step": 0.01
+            },
+            "snappy": {
+              "label": "Snappy",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "clap",
+          "name": "Clap",
+          "sequence": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "volume": 0.5,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "decay": 0.15,
+            "spread": 0.8,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.3,
+              "step": 0.01
+            },
+            "spread": {
+              "label": "Spread",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "low_tom",
+          "name": "Low Tom",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.55,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 100,
+            "decay": 0.4,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 60,
+              "max": 150,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.8,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "mid_tom",
+          "name": "Mid Tom",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.55,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 150,
+            "decay": 0.3,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 100,
+              "max": 250,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.6,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "hi_tom",
+          "name": "High Tom",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.55,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 220,
+            "decay": 0.25,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 150,
+              "max": 350,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.5,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "hihat",
+          "name": "Closed Hi-hat",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.45,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 300,
+            "metal": 0.5,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 200,
+              "max": 800,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.01,
+              "max": 0.2,
+              "step": 0.001
+            },
+            "metal": {
+              "label": "Metal",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "openhat",
+          "name": "Open Hi-hat",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.45,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 300,
+            "decay": 0.5,
+            "metal": 0.5,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 200,
+              "max": 800,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 1,
+              "step": 0.01
+            },
+            "metal": {
+              "label": "Metal",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        }
+      ],
+      "bassline": {
+        "sequence": [
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          }
+        ],
+        "params": {
+          "waveform": "sawtooth",
+          "cutoff": 800,
+          "resonance": 5,
+          "envelopeAmount": 2000,
+          "decay": 0.3,
+          "accent": 0.5,
+          "volume": 0.25,
+          "reverbSend": 0,
+          "delaySend": 0,
+          "flangerSend": 0
+        }
+      }
+    },
+    {
+      "tempo": 120,
+      "swing": 0,
+      "timeSignature": [
+        4,
+        4
+      ],
+      "instruments": [
+        {
+          "id": "kick",
+          "name": "Kick Drum",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 1,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 50,
+            "decay": 0.5,
+            "punch": 0,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 20,
+              "max": 100,
+              "step": 0.1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 1,
+              "step": 0.01
+            },
+            "punch": {
+              "label": "Punch",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "snare",
+          "name": "Snare Drum",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.6,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 180,
+            "decay": 0.2,
+            "snappy": 0.5,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 80,
+              "max": 300,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.5,
+              "step": 0.01
+            },
+            "snappy": {
+              "label": "Snappy",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "clap",
+          "name": "Clap",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.5,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "decay": 0.15,
+            "spread": 0.8,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.3,
+              "step": 0.01
+            },
+            "spread": {
+              "label": "Spread",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "low_tom",
+          "name": "Low Tom",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.55,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 100,
+            "decay": 0.4,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 60,
+              "max": 150,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.8,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "mid_tom",
+          "name": "Mid Tom",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.55,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 150,
+            "decay": 0.3,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 100,
+              "max": 250,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.6,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "hi_tom",
+          "name": "High Tom",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.55,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 220,
+            "decay": 0.25,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 150,
+              "max": 350,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.5,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "hihat",
+          "name": "Closed Hi-hat",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.45,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 300,
+            "metal": 0.5,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 200,
+              "max": 800,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.01,
+              "max": 0.2,
+              "step": 0.001
+            },
+            "metal": {
+              "label": "Metal",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "openhat",
+          "name": "Open Hi-hat",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.45,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 300,
+            "decay": 0.5,
+            "metal": 0.5,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 200,
+              "max": 800,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 1,
+              "step": 0.01
+            },
+            "metal": {
+              "label": "Metal",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        }
+      ],
+      "bassline": {
+        "sequence": [
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          }
+        ],
+        "params": {
+          "waveform": "sawtooth",
+          "cutoff": 800,
+          "resonance": 5,
+          "envelopeAmount": 2000,
+          "decay": 0.3,
+          "accent": 0.5,
+          "volume": 0.25,
+          "reverbSend": 0,
+          "delaySend": 0,
+          "flangerSend": 0
+        }
+      }
+    },
+    {
+      "tempo": 120,
+      "swing": 0,
+      "timeSignature": [
+        4,
+        4
+      ],
+      "instruments": [
+        {
+          "id": "kick",
+          "name": "Kick Drum",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 1,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 50,
+            "decay": 0.5,
+            "punch": 0,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 20,
+              "max": 100,
+              "step": 0.1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 1,
+              "step": 0.01
+            },
+            "punch": {
+              "label": "Punch",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "snare",
+          "name": "Snare Drum",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.6,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 180,
+            "decay": 0.2,
+            "snappy": 0.5,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 80,
+              "max": 300,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.5,
+              "step": 0.01
+            },
+            "snappy": {
+              "label": "Snappy",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "clap",
+          "name": "Clap",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.5,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "decay": 0.15,
+            "spread": 0.8,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.3,
+              "step": 0.01
+            },
+            "spread": {
+              "label": "Spread",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "low_tom",
+          "name": "Low Tom",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.55,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 100,
+            "decay": 0.4,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 60,
+              "max": 150,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.8,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "mid_tom",
+          "name": "Mid Tom",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.55,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 150,
+            "decay": 0.3,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 100,
+              "max": 250,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.6,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "hi_tom",
+          "name": "High Tom",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.55,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 220,
+            "decay": 0.25,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 150,
+              "max": 350,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 0.5,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "hihat",
+          "name": "Closed Hi-hat",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.45,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 300,
+            "metal": 0.5,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 200,
+              "max": 800,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.01,
+              "max": 0.2,
+              "step": 0.001
+            },
+            "metal": {
+              "label": "Metal",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        },
+        {
+          "id": "openhat",
+          "name": "Open Hi-hat",
+          "sequence": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "volume": 0.45,
+          "isMuted": false,
+          "isSolo": false,
+          "params": {
+            "pitch": 300,
+            "decay": 0.5,
+            "metal": 0.5,
+            "reverbSend": 0,
+            "delaySend": 0,
+            "flangerSend": 0
+          },
+          "paramDefinitions": {
+            "pitch": {
+              "label": "Pitch",
+              "min": 200,
+              "max": 800,
+              "step": 1
+            },
+            "decay": {
+              "label": "Decay",
+              "min": 0.1,
+              "max": 1,
+              "step": 0.01
+            },
+            "metal": {
+              "label": "Metal",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "reverbSend": {
+              "label": "Reverb",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "delaySend": {
+              "label": "Delay",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            },
+            "flangerSend": {
+              "label": "Flanger",
+              "min": 0,
+              "max": 1,
+              "step": 0.01
+            }
+          }
+        }
+      ],
+      "bassline": {
+        "sequence": [
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          },
+          {
+            "note": null,
+            "velocity": 0,
+            "slide": false
+          }
+        ],
+        "params": {
+          "waveform": "sawtooth",
+          "cutoff": 800,
+          "resonance": 5,
+          "envelopeAmount": 2000,
+          "decay": 0.3,
+          "accent": 0.5,
+          "volume": 0.25,
+          "reverbSend": 0,
+          "delaySend": 0,
+          "flangerSend": 0
+        }
+      }
+    }
+  ],
+  "song": {
+    "sequence": [
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "isLooping": true
+  }
+}
