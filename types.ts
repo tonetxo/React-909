@@ -44,6 +44,7 @@ export interface BasslineStep {
   note: number | null; // MIDI note number
   velocity: Velocity;
   slide: boolean;
+  tie: boolean;
 }
 
 export interface BasslineParams {

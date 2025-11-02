@@ -66,6 +66,7 @@ const mergePatternData = (loadedPattern: Pattern | null, timeSignature: TimeSign
         note: step.note,
         velocity: step.velocity ?? (step.accent ? 3 : 0),
         slide: step.slide ?? false,
+        tie: step.tie ?? false, // Add this line
     }));
 
 
@@ -283,7 +284,7 @@ const App: React.FC = () => {
         ...p,
         timeSignature: newTimeSignature,
         instruments: p.instruments.map(inst => ({ ...inst, sequence: resize(inst.sequence) })),
-        bassline: { ...p.bassline!, sequence: resize(p.bassline!.sequence).map(s => typeof s === 'number' ? { note: null, velocity: 0, slide: false } : s) }
+        bassline: { ...p.bassline!, sequence: resize(p.bassline!.sequence).map(s => typeof s === 'number' ? { note: null, velocity: 0, slide: false, tie: false } : s) }
     }));
   };
 
@@ -292,6 +293,14 @@ const App: React.FC = () => {
         const newInstruments = JSON.parse(JSON.stringify(p.instruments));
         const sequence = newInstruments[instrumentIndex].sequence;
         sequence[stepIndex] = ((sequence[stepIndex] + 1) % 6) as Velocity;
+        return { ...p, instruments: newInstruments };
+    });
+  };
+
+  const handleClearStep = (instrumentIndex: number, stepIndex: number) => {
+    updateCurrentPattern(p => {
+        const newInstruments = JSON.parse(JSON.stringify(p.instruments));
+        newInstruments[instrumentIndex].sequence[stepIndex] = 0;
         return { ...p, instruments: newInstruments };
     });
   };
@@ -442,7 +451,15 @@ const App: React.FC = () => {
     });
   };
 
-  const handleBasslineControlToggle = (stepIndex: number, control: 'slide') => {
+  const handleClearBasslineStep = (stepIndex: number) => {
+    updateCurrentPattern(p => {
+        const newSequence = JSON.parse(JSON.stringify(p.bassline!.sequence));
+        newSequence[stepIndex] = { ...newSequence[stepIndex], note: null, velocity: 0 };
+        return { ...p, bassline: { ...p.bassline!, sequence: newSequence } };
+    });
+  };
+
+  const handleBasslineControlToggle = (stepIndex: number, control: 'slide' | 'tie') => {
     updateCurrentPattern(p => {
         const newSequence = JSON.parse(JSON.stringify(p.bassline!.sequence));
         newSequence[stepIndex] = { ...newSequence[stepIndex], [control]: !newSequence[stepIndex][control] };
@@ -464,8 +481,8 @@ const App: React.FC = () => {
           
           {isLoaded && (
             <>
-              <Sequencer instruments={instruments} currentStep={currentStep} selectedInstrumentId={selectedInstrumentId} timeSignature={timeSignature} onStepClick={handleStepClick} onInstrumentSelect={handleInstrumentSelect} onMuteToggle={handleMuteToggle} onSoloToggle={handleSoloToggle} onParamChange={handleParamChange} onVolumeChange={handleVolumeChange} />
-              <BasslineSequencer basslinePattern={basslinePattern} currentStep={currentStep} timeSignature={timeSignature} onNoteClick={handleBasslineNoteClick} onParamChange={handleBasslineParamChange} onControlToggle={handleBasslineControlToggle} />
+              <Sequencer instruments={instruments} currentStep={currentStep} selectedInstrumentId={selectedInstrumentId} timeSignature={timeSignature} onStepClick={handleStepClick} onStepClear={handleClearStep} onInstrumentSelect={handleInstrumentSelect} onMuteToggle={handleMuteToggle} onSoloToggle={handleSoloToggle} onParamChange={handleParamChange} onVolumeChange={handleVolumeChange} />
+              <BasslineSequencer basslinePattern={basslinePattern} currentStep={currentStep} timeSignature={timeSignature} onNoteClick={handleBasslineNoteClick} onStepClear={handleClearBasslineStep} onParamChange={handleBasslineParamChange} onControlToggle={handleBasslineControlToggle} />
               <VocoderControls 
                 params={vocoderParams} 
                 onParamChange={handleVocoderParamChange}

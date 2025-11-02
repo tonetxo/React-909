@@ -7,8 +7,9 @@ interface BasslineSequencerProps {
   currentStep: number | null;
   timeSignature: TimeSignature;
   onNoteClick: (stepIndex: number, note: number) => void;
+  onStepClear: (stepIndex: number) => void;
   onParamChange: (param: keyof BasslineParams, value: number | Waveform) => void;
-  onControlToggle: (stepIndex: number, control: 'slide') => void;
+  onControlToggle: (stepIndex: number, control: 'slide' | 'tie') => void;
 }
 
 const WAVEFORMS: Waveform[] = ['sawtooth', 'square', 'sine', 'triangle'];
@@ -40,6 +41,7 @@ const BasslineSequencer: React.FC<BasslineSequencerProps> = ({
     currentStep,
     timeSignature,
     onNoteClick,
+    onStepClear,
     onParamChange,
     onControlToggle
 }) => {
@@ -69,6 +71,11 @@ const BasslineSequencer: React.FC<BasslineSequencerProps> = ({
         case 'triangle': return 'TRI';
         default: return '';
     }
+  };
+
+  const handleContextMenu = (event: React.MouseEvent, stepIndex: number) => {
+    event.preventDefault();
+    onStepClear(stepIndex);
   };
   
   return (
@@ -126,6 +133,7 @@ const BasslineSequencer: React.FC<BasslineSequencerProps> = ({
                     </div>
                 ))}
                  <div className="h-5 mt-2"></div>
+                 <div className="h-5 mt-1"></div>
             </div>
 
             <div className="flex-grow">
@@ -142,6 +150,7 @@ const BasslineSequencer: React.FC<BasslineSequencerProps> = ({
                                         {isBeatSeparator && <div className="w-1.5" />}
                                         <button 
                                             onClick={() => onNoteClick(stepIndex, note)}
+                                            onContextMenu={(e) => handleContextMenu(e, stepIndex)}
                                             className={`w-full h-5 rounded-sm border transition-all duration-100 
                                                 ${isCurrent ? 'ring-2 ring-white z-10' : ''}
                                                 ${isActive ? BASSLINE_VELOCITY_COLORS[step.velocity - 1] : `${isBlack ? 'bg-gray-800/60' : 'bg-gray-700/50'} border-gray-600/50 hover:bg-gray-600`}
@@ -154,7 +163,7 @@ const BasslineSequencer: React.FC<BasslineSequencerProps> = ({
                         </div>
                     ))}
                 </div>
-                {/* Control Row (Slide) */}
+                {/* Control Rows */}
                 <div className="flex items-center gap-1 mt-2">
                     {sequence.map((step, stepIndex) => {
                         const isBeatSeparator = stepIndex > 0 && stepIndex % beatsPerMeasure === 0;
@@ -170,6 +179,26 @@ const BasslineSequencer: React.FC<BasslineSequencerProps> = ({
                                     title="Toggle Slide"
                                 >
                                     SL
+                                </button>
+                            </React.Fragment>
+                        )
+                    })}
+                </div>
+                <div className="flex items-center gap-1 mt-1">
+                    {sequence.map((step, stepIndex) => {
+                        const isBeatSeparator = stepIndex > 0 && stepIndex % beatsPerMeasure === 0;
+                        return (
+                            <React.Fragment key={stepIndex}>
+                                {isBeatSeparator && <div className="w-1.5" />}
+                                <button 
+                                    onClick={() => onControlToggle(stepIndex, 'tie')}
+                                    className={`w-full h-5 text-xs font-bold rounded border transition-colors ${
+                                        step.tie ? 'bg-green-600 text-white border-green-500' : 'bg-gray-800 text-gray-500 border-gray-700 hover:bg-gray-700'
+                                    }`}
+                                    aria-pressed={step.tie}
+                                    title="Toggle Tie"
+                                >
+                                    TIE
                                 </button>
                             </React.Fragment>
                         )

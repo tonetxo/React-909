@@ -10,6 +10,7 @@ interface SequencerProps {
   selectedInstrumentId: string | null;
   timeSignature: TimeSignature;
   onStepClick: (instrumentIndex: number, stepIndex: number) => void;
+  onStepClear: (instrumentIndex: number, stepIndex: number) => void;
   onInstrumentSelect: (instrumentId: string) => void;
   onMuteToggle: (instrumentId: string) => void;
   onSoloToggle: (instrumentId: string) => void;
@@ -23,6 +24,7 @@ const Sequencer: React.FC<SequencerProps> = ({
   selectedInstrumentId,
   timeSignature,
   onStepClick,
+  onStepClear, // Added this prop
   onInstrumentSelect,
   onMuteToggle,
   onSoloToggle,
@@ -31,6 +33,11 @@ const Sequencer: React.FC<SequencerProps> = ({
 }) => {
   const stepsPerBeat = timeSignature[1] === 8 ? 3 : 4;
   const beatsPerMeasure = timeSignature[0];
+
+  const handleContextMenu = (event: React.MouseEvent, instrumentIndex: number, stepIndex: number) => {
+    event.preventDefault();
+    onStepClear(instrumentIndex, stepIndex);
+  };
 
   return (
     <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700 shadow-inner w-full">
@@ -55,6 +62,7 @@ const Sequencer: React.FC<SequencerProps> = ({
                         velocity={velocity as Velocity}
                         isCurrent={currentStep === stepIndex}
                         onClick={() => onStepClick(instrumentIndex, stepIndex)}
+                        onContextMenu={(e) => handleContextMenu(e, instrumentIndex, stepIndex)}
                       />
                     </React.Fragment>
                   )

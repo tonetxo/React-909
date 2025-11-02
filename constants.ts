@@ -230,7 +230,7 @@ export const getInitialInstruments = (steps: number): Instrument[] => [
 ];
 
 export const getInitialBasslinePattern = (steps: number): BasslinePattern => ({
-    sequence: Array(steps).fill(0).map(() => ({ note: null, velocity: 0, slide: false })),
+    sequence: Array(steps).fill(0).map(() => ({ note: null, velocity: 0, slide: false, tie: false })),
     params: {
         waveform: 'sawtooth',
         cutoff: 800,

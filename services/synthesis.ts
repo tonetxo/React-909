@@ -175,11 +175,17 @@ export const playScheduledBasslineNote = (
     channel: SynthesisChannelStrip
 ) => {
     if (basslineOsc && basslineVcf && basslineVca) {
-        if (!prevStep.slide) {
+        if (!prevStep.slide && !prevStep.tie) { // Check for tie
             basslineVca.gain.cancelScheduledValues(time);
             basslineVca.gain.setTargetAtTime(0, time, 0.01);
             basslineOsc.stop(time + 0.02);
         }
+    }
+
+    // If the current step is tied, we just let the previous note continue.
+    if (prevStep.tie) {
+        // We might want to update the filter etc. even on a tied note, but for now, just hold.
+        return;
     }
 
     if (!step || step.note === null || step.velocity === 0) {
@@ -226,7 +232,8 @@ export const playScheduledBasslineNote = (
 
     osc.start(time);
     
-    if (!step.slide) {
+    // Don't stop the oscillator if the current step slides or is tied
+    if (!step.slide && !step.tie) {
         osc.stop(time + params.decay + 0.2);
     }
 
