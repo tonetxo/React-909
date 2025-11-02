@@ -86,10 +86,8 @@ const mergePatternData = (loadedPattern: Pattern | null, timeSignature: TimeSign
 const App: React.FC = () => {
   const [timeSignature, setTimeSignature] = useState<TimeSignature>([4, 4]);
   const [stepsPerSequence, setStepsPerSequence] = useState<number>(16);
-  const [instruments, setInstruments] = useState<Instrument[]>(getInitialInstruments(stepsPerSequence));
+
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [tempo, setTempo] = useState<number>(INITIAL_TEMPO);
-  const [swing, setSwing] = useState<number>(INITIAL_SWING);
   const [currentStep, setCurrentStep] = useState<number | null>(null);
   const [selectedInstrumentId, setSelectedInstrumentId] = useState<string | null>(null);
   
@@ -103,9 +101,14 @@ const App: React.FC = () => {
   const [selectedPatternIndex, setSelectedPatternIndex] = useState<number>(0);
   const [clipboard, setClipboard] = useState<Pattern | null>(null);
   
-  const [basslinePattern, setBasslinePattern] = useState<BasslinePattern>(getInitialBasslinePattern(stepsPerSequence));
   const [vocoderType, setVocoderType] = useState<VocoderType>('original');
   const [vocoderParams, setVocoderParams] = useState<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
+
+  // --- Derived State ---
+  const activePattern = patterns[selectedPatternIndex] ?? mergePatternData(null, timeSignature, stepsPerSequence);
+  const { tempo, swing, instruments, bassline: basslinePattern } = activePattern;
+
+  
 
   const vocoderParamsRef = useRef<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
   vocoderParamsRef.current = vocoderParams;
@@ -149,27 +152,22 @@ const App: React.FC = () => {
             
             const currentPattern = mergedPatterns[selectedPatternIndex];
             if (currentPattern) {
-                setTempo(currentPattern.tempo);
-                setSwing(currentPattern.swing);
                 setTimeSignature(currentPattern.timeSignature);
-                setInstruments(currentPattern.instruments);
-                setBasslinePattern(currentPattern.bassline!);
             }
         } else {
             throw new Error("Invalid project data");
         }
       } else {
+        // If no saved project, ensure the initial pattern is correctly set up
+        // based on the initial time signature and steps.
         const mergedPattern = mergePatternData(null, timeSignature, stepsPerSequence);
         setPatterns([mergedPattern, null, null, null]);
-        setInstruments(mergedPattern.instruments);
-        setBasslinePattern(mergedPattern.bassline!);
       }
     } catch (error) {
         console.error("Failed to load project:", error);
+        // If loading fails, create a default pattern.
         const mergedPattern = mergePatternData(null, timeSignature, stepsPerSequence);
         setPatterns([mergedPattern, null, null, null]);
-        setInstruments(mergedPattern.instruments);
-        setBasslinePattern(mergedPattern.bassline!);
     } finally {
         setIsLoaded(true);
     }
@@ -179,20 +177,11 @@ const App: React.FC = () => {
 
   const loadPatternState = useCallback((patternIndex: number, songStepIndex: number | null = null) => {
     const patternToLoad = patterns[patternIndex];
-    const ts = patternToLoad?.timeSignature || [4, 4];
-    const steps = ts[1] === 8 ? ts[0] * 2 : ts[0] * 4;
+    if (!patternToLoad) return;
 
-    const mergedPattern = mergePatternData(patternToLoad, ts, steps);
-    
     setSelectedPatternIndex(patternIndex);
     setCurrentSongStep(songStepIndex);
-    
-    setTempo(mergedPattern.tempo);
-    setSwing(mergedPattern.swing);
-    setTimeSignature(mergedPattern.timeSignature);
-    setStepsPerSequence(steps);
-    setInstruments(mergedPattern.instruments);
-    setBasslinePattern(mergedPattern.bassline!);
+    setTimeSignature(patternToLoad.timeSignature);
     setCurrentStep(null);
   }, [patterns]);
 
@@ -239,6 +228,15 @@ const App: React.FC = () => {
       }
     }
   }, [isPlaying, selectedPatternIndex, patterns, sequencerEngine]);
+
+  // This effect syncs pattern changes (mutes, steps, params) to the engine WHILE playing
+  useEffect(() => {
+    if (isPlaying && activePattern) {
+      sequencerEngine.reloadCurrentPattern(activePattern);
+      sequencerEngine.updateTempo(tempo);
+      sequencerEngine.updateSwing(swing);
+    }
+  }, [isPlaying, activePattern, tempo, swing, sequencerEngine]);
   
   // --- Vocoder Initialization ---
   useEffect(() => {
@@ -256,8 +254,8 @@ const App: React.FC = () => {
     setIsPlaying(sequencerEngine.isPlayingState());
   };
 
-  const handleTempoChange = (e: React.ChangeEvent<HTMLInputElement>) => setTempo(Number(e.target.value));
-  const handleSwingChange = (e: React.ChangeEvent<HTMLInputElement>) => setSwing(Number(e.target.value));
+  const handleTempoChange = (newTempo: number) => updateCurrentPattern(p => ({ ...p, tempo: newTempo }));
+  const handleSwingChange = (newSwing: number) => updateCurrentPattern(p => ({ ...p, swing: newSwing }));
 
   useEffect(() => {
     const [beats, beatType] = timeSignature;
@@ -265,108 +263,65 @@ const App: React.FC = () => {
     setStepsPerSequence(newStepsPerSequence);
   }, [timeSignature]);
 
+  const updateCurrentPattern = useCallback((updater: (pattern: Pattern) => Pattern) => {
+    setPatterns(prevPatterns => {
+      const newPatterns = [...prevPatterns];
+      const currentPattern = newPatterns[selectedPatternIndex] ?? mergePatternData(null, timeSignature, stepsPerSequence);
+      newPatterns[selectedPatternIndex] = updater(currentPattern);
+      return newPatterns;
+    });
+  }, [selectedPatternIndex, timeSignature, stepsPerSequence]);
+
   const handleTimeSignatureChange = (newTimeSignature: TimeSignature) => {
     setTimeSignature(newTimeSignature);
-
-    const [beats, beatType] = newTimeSignature;
-    const newSteps = beatType === 8 ? beats * 2 : beats * 4;
-
-    const resizeSequence = (sequence: any[]) => {
-      const currentLength = sequence.length;
-      if (currentLength === newSteps) {
-        return sequence;
-      }
-      if (currentLength > newSteps) {
-        return sequence.slice(0, newSteps);
-      }
-      // Pad with default values
-      const newSequence = [...sequence];
-      for (let i = currentLength; i < newSteps; i++) {
-        newSequence.push(0);
-      }
-      return newSequence;
+    const newSteps = newTimeSignature[1] === 8 ? newTimeSignature[0] * 2 : newTimeSignature[0] * 4;
+    const resize = (seq: any[]) => {
+        if (seq.length === newSteps) return seq;
+        return seq.length > newSteps ? seq.slice(0, newSteps) : [...seq, ...Array(newSteps - seq.length).fill(0)];
     };
-
-    setInstruments(prev => prev.map(instrument => ({
-      ...instrument,
-      sequence: resizeSequence(instrument.sequence),
-    })));
-
-    setBasslinePattern(prev => ({
-      ...prev,
-      sequence: resizeSequence(prev.sequence).map(s => typeof s === 'number' ? { note: null, velocity: 0, slide: false } : s),
+    updateCurrentPattern(p => ({
+        ...p,
+        timeSignature: newTimeSignature,
+        instruments: p.instruments.map(inst => ({ ...inst, sequence: resize(inst.sequence) })),
+        bassline: { ...p.bassline!, sequence: resize(p.bassline!.sequence).map(s => typeof s === 'number' ? { note: null, velocity: 0, slide: false } : s) }
     }));
   };
 
-  const updateCurrentPattern = (updater: (pattern: Pattern) => Pattern) => {
-      const newPatterns = [...patterns];
-      const currentPattern = newPatterns[selectedPatternIndex] ?? mergePatternData(null, timeSignature, stepsPerSequence);
-      newPatterns[selectedPatternIndex] = updater(currentPattern);
-      setPatterns(newPatterns);
-      return newPatterns;
-  }
-
   const handleStepClick = (instrumentIndex: number, stepIndex: number) => {
-    setInstruments(prev => {
-      const newInstruments = JSON.parse(JSON.stringify(prev));
-      const newSequence = newInstruments[instrumentIndex].sequence;
-      newSequence[stepIndex] = ((newSequence[stepIndex] + 1) % 6) as Velocity;
-      return newInstruments;
+    updateCurrentPattern(p => {
+        const newInstruments = JSON.parse(JSON.stringify(p.instruments));
+        const sequence = newInstruments[instrumentIndex].sequence;
+        sequence[stepIndex] = ((sequence[stepIndex] + 1) % 6) as Velocity;
+        return { ...p, instruments: newInstruments };
     });
   };
 
   const handleInstrumentSelect = (id: string) => setSelectedInstrumentId(prev => prev === id ? null : id);
-  const handleMuteToggle = (id: string) => setInstruments(prev => prev.map(i => i.id === id ? { ...i, isMuted: !i.isMuted } : i));
+  const handleMuteToggle = (id: string) => updateCurrentPattern(p => ({ ...p, instruments: p.instruments.map(i => i.id === id ? { ...i, isMuted: !i.isMuted } : i) }));
   const handleSoloToggle = (id: string) => {
-    setInstruments(prev => {
-        const isSolo = !prev.find(i => i.id === id)?.isSolo;
-        return prev.map(i => ({ ...i, isSolo: i.id === id ? isSolo : false }));
+    updateCurrentPattern(p => {
+        const isCurrentlySolo = p.instruments.find(i => i.id === id)?.isSolo;
+        return { ...p, instruments: p.instruments.map(i => ({ ...i, isSolo: i.id === id ? !isCurrentlySolo : false })) };
     });
   };
-  const handleParamChange = (id: string, param: keyof InstrumentParams, value: number) => {
-    setInstruments(prev => prev.map(i => i.id === id ? { ...i, params: { ...i.params, [param]: value } } : i));
-  };
-  const handleVolumeChange = (id: string, value: number) => {
-    setInstruments(prev => prev.map(i => i.id === id ? { ...i, volume: value } : i));
-  };
+  const handleParamChange = (id: string, param: keyof InstrumentParams, value: number) => updateCurrentPattern(p => ({ ...p, instruments: p.instruments.map(i => i.id === id ? { ...i, params: { ...i.params, [param]: value } } : i) }));
+  const handleVolumeChange = (id: string, value: number) => updateCurrentPattern(p => ({ ...p, instruments: p.instruments.map(i => i.id === id ? { ...i, volume: value } : i) }));
 
   const handleSavePattern = () => {
-    const newPattern: Pattern = { tempo, swing, timeSignature, instruments, bassline: basslinePattern };
-    const newPatterns = [...patterns];
-    newPatterns[selectedPatternIndex] = newPattern;
-    setPatterns(newPatterns);
-    saveProject(newPatterns, songSequence, isSongLooping);
+    // The pattern is now updated in real-time, so we just need to save the project.
+    saveProject(patterns, songSequence, isSongLooping);
   };
   const handleLoadPattern = async (index: number) => {
     if (isPlaying) {
         await sequencerEngine.loadPattern(index);
-    } else {
-        loadPatternState(index);
     }
+    setSelectedPatternIndex(index);
     setIsSongModeActive(false);
   };
-  const handleCopyPattern = () => setClipboard({ tempo, swing, timeSignature, instruments, bassline: basslinePattern });
+  const handleCopyPattern = () => setClipboard(activePattern);
   const handlePastePattern = () => {
     if (clipboard) {
-      // 1. Update the patterns array
-      const newPatterns = [...patterns];
-      // Deep copy the clipboard pattern to avoid reference issues
-      const pastedPattern = JSON.parse(JSON.stringify(clipboard));
-      newPatterns[selectedPatternIndex] = pastedPattern;
-      setPatterns(newPatterns);
-      saveProject(newPatterns, songSequence, isSongLooping);
-
-      // 2. Load the state from the just-pasted pattern
-      const ts = pastedPattern.timeSignature || [4, 4];
-      const steps = ts[1] === 8 ? ts[0] * 2 : ts[0] * 4;
-      const merged = mergePatternData(pastedPattern, ts, steps);
-      
-      setTempo(merged.tempo);
-      setSwing(merged.swing);
-      setTimeSignature(merged.timeSignature);
-      setStepsPerSequence(steps); // This is important!
-      setInstruments(merged.instruments);
-      setBasslinePattern(merged.bassline!);
+      updateCurrentPattern(() => JSON.parse(JSON.stringify(clipboard)));
     }
   };
   const handleExportPatterns = () => {
@@ -394,18 +349,14 @@ const App: React.FC = () => {
             setPatterns(mergedPatterns);
             setSongSequence(projectData.song.sequence);
             setIsSongLooping(looping);
-            saveProject(mergedPatterns, projectData.song.sequence, looping);
             
-            setIsSongModeActive(false);
-            
-            const currentPattern = mergedPatterns[selectedPatternIndex];
-            if (currentPattern) {
-                setTempo(currentPattern.tempo);
-                setSwing(currentPattern.swing);
-                setTimeSignature(currentPattern.timeSignature);
-                setInstruments(currentPattern.instruments);
-                setBasslinePattern(currentPattern.bassline!);
+            const firstPattern = mergedPatterns[0];
+            if (firstPattern) {
+                setTimeSignature(firstPattern.timeSignature);
             }
+            setSelectedPatternIndex(0);
+            setIsSongModeActive(false);
+
             alert("Project imported successfully!");
         } catch (error) {
             alert(`Error importing project: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -423,58 +374,40 @@ const App: React.FC = () => {
     saveProject(patterns, songSequence, newLoopingState);
   };
   const handleSongStepClick = (stepIndex: number) => {
-    const newSequence = [...songSequence];
-    const currentValue = newSequence[stepIndex];
-    
-    let nextValue: number;
-
-    if (currentValue === null) {
-        nextValue = 0; // From null -> P1
-    } else {
-        // Cycle from 0 to 3, and then back to 0 (P1 -> P2 -> P3 -> P4 -> P1)
-        nextValue = (currentValue + 1) % NUM_PATTERNS;
-    }
-    
-    newSequence[stepIndex] = nextValue;
-    setSongSequence(newSequence);
-    saveProject(patterns, newSequence, isSongLooping);
+    setSongSequence(prevSequence => {
+      const newSequence = [...prevSequence];
+      const currentValue = newSequence[stepIndex];
+      let nextValue: number | null = null;
+      if (currentValue === null) {
+          nextValue = 0;
+      } else if (currentValue < NUM_PATTERNS - 1) {
+          nextValue = currentValue + 1;
+      }
+      newSequence[stepIndex] = nextValue;
+      return newSequence;
+    });
   };
   const handleClearSong = () => {
-    const newSequence = Array(SONG_STEPS).fill(null);
-    setSongSequence(newSequence);
-    saveProject(patterns, newSequence, isSongLooping);
+    setSongSequence(Array(SONG_STEPS).fill(null));
   };
 
   const handleReset = () => {
-    if (isPlaying) setIsPlaying(false); // Stop playback
-
-    // Reset all state variables to their initial values
-    setInstruments(getInitialInstruments(16)); // Deep copy
-    setTempo(INITIAL_TEMPO);
-    setSwing(INITIAL_SWING);
+    if (isPlaying) setIsPlaying(false);
     setTimeSignature([4, 4]);
-    setStepsPerSequence(16);
-    setCurrentStep(null);
-    setSelectedInstrumentId(null);
-    setPatterns(Array(NUM_PATTERNS).fill(null));
+    setPatterns(Array(NUM_PATTERNS).fill(null).map(() => mergePatternData(null, [4, 4], 16)));
     setSelectedPatternIndex(0);
     setClipboard(null);
-    setBasslinePattern(getInitialBasslinePattern(16)); // Deep copy
-    setVocoderParams(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS))); // Deep copy
+    setVocoderParams(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
     setIsSongModeActive(false);
     setSongSequence(Array(SONG_STEPS).fill(null));
     setIsSongLooping(false);
-    setCurrentSongStep(null);
-
-    // Clear local storage
     localStorage.removeItem(PROJECT_STORAGE_KEY);
-
     alert("Application state reset to defaults!");
   };
 
   // --- Bassline Handlers ---
   const handleBasslineParamChange = (param: keyof BasslineParams, value: number | Waveform) => {
-    setBasslinePattern(prev => ({ ...prev, params: { ...prev.params, [param]: value }}));
+    updateCurrentPattern(p => ({ ...p, bassline: { ...p.bassline!, params: { ...p.bassline!.params, [param]: value } } }));
   };
 
   // --- Vocoder Handlers ---
@@ -485,7 +418,6 @@ const App: React.FC = () => {
 
     if (param === 'enabled') {
       toggleVocoder(value as boolean).catch(() => {
-        // Revert the state if permission is denied
         setVocoderParams(prev => ({...prev, enabled: false}));
       });
     }
@@ -496,35 +428,25 @@ const App: React.FC = () => {
     setAudioServiceVocoderType(type);
   };
 
-
-
   const handleBasslineNoteClick = (stepIndex: number, note: number) => {
-    setBasslinePattern(prev => {
-        const newSequence = JSON.parse(JSON.stringify(prev.sequence));
+    updateCurrentPattern(p => {
+        const newSequence = JSON.parse(JSON.stringify(p.bassline!.sequence));
         const step = newSequence[stepIndex];
-        const currentNote = step.note;
-        const currentVelocity = step.velocity;
-
-        if (currentNote === note) {
-            const newVelocity = ((currentVelocity + 1) % 6) as Velocity;
-            if (newVelocity === 0) {
-                newSequence[stepIndex] = { ...step, note: null, velocity: 0 };
-            } else {
-                newSequence[stepIndex] = { ...step, velocity: newVelocity };
-            }
+        if (step.note === note) {
+            const newVelocity = ((step.velocity + 1) % 6) as Velocity;
+            newSequence[stepIndex] = newVelocity === 0 ? { ...step, note: null, velocity: 0 } : { ...step, velocity: newVelocity };
         } else {
             newSequence[stepIndex] = { ...step, note: note, velocity: 1 };
         }
-        
-        return { ...prev, sequence: newSequence };
+        return { ...p, bassline: { ...p.bassline!, sequence: newSequence } };
     });
   };
 
   const handleBasslineControlToggle = (stepIndex: number, control: 'slide') => {
-    setBasslinePattern(prev => {
-        const newSequence = JSON.parse(JSON.stringify(prev.sequence));
+    updateCurrentPattern(p => {
+        const newSequence = JSON.parse(JSON.stringify(p.bassline!.sequence));
         newSequence[stepIndex] = { ...newSequence[stepIndex], [control]: !newSequence[stepIndex][control] };
-        return { ...prev, sequence: newSequence };
+        return { ...p, bassline: { ...p.bassline!, sequence: newSequence } };
     });
   };
 

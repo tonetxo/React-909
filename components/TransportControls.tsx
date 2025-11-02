@@ -6,9 +6,9 @@ interface TransportControlsProps {
   isPlaying: boolean;
   onPlayToggle: () => void;
   tempo: number;
-  onTempoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onTempoChange: (value: number) => void;
   swing: number;
-  onSwingChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSwingChange: (value: number) => void;
   timeSignature: TimeSignature;
   onTimeSignatureChange: (timeSignature: TimeSignature) => void;
 }
@@ -69,7 +69,7 @@ const TransportControls: React.FC<TransportControlsProps> = ({
             min="40"
             max="240"
             value={tempo}
-            onChange={onTempoChange}
+            onChange={(e) => onTempoChange(Number(e.target.value))}
             className="w-full accent-yellow-500"
             />
             <span className="text-lg font-mono bg-gray-800 text-white px-3 py-1 rounded-md w-24 text-center">{tempo} BPM</span>
@@ -83,7 +83,7 @@ const TransportControls: React.FC<TransportControlsProps> = ({
             min="0"
             max="100"
             value={swing}
-            onChange={onSwingChange}
+            onChange={(e) => onSwingChange(Number(e.target.value))}
             className="w-full accent-yellow-500"
             />
             <span className="text-lg font-mono bg-gray-800 text-white px-3 py-1 rounded-md w-24 text-center">{swing}%</span>

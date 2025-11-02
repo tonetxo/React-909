@@ -252,6 +252,20 @@ export class SequencerEngine {
       );
     }
   }
+
+  updateTempo(tempo: number) {
+    this.currentTempo = tempo;
+    if (this.isPlaying) {
+      this.audioEngine.updateTempo(tempo);
+    }
+  }
+
+  updateSwing(swing: number) {
+    this.currentSwing = swing;
+    if (this.isPlaying) {
+      this.audioEngine.updateSwing(swing);
+    }
+  }
   
   getCurrentPatternIndex(): number {
     return this.currentPatternIndex;

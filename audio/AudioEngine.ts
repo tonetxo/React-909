@@ -85,6 +85,14 @@ export class AudioEngine {
     // A full "panic" stop would require more complex gain management.
   }
 
+  public updateTempo(newTempo: number) {
+    this.tempo = newTempo;
+  }
+
+  public updateSwing(newSwing: number) {
+    this.swing = newSwing;
+  }
+
   private scheduleNextSteps() {
     if (!this.isRunning || !this.audioContext) return;
 
