@@ -103,7 +103,7 @@ export class AudioEngine {
 
       let currentStepDuration = stepDuration;
       if (this.swing > 0) {
-        const swingAmount = Math.pow(this.swing / 100, 3) * 0.3;
+        const swingAmount = Math.pow(this.swing / 100, 2) * 0.5;
         if (this.currentStep % 2 !== 0) { // Off-beat
           currentStepDuration += stepDuration * swingAmount;
         } else { // On-beat
@@ -146,7 +146,8 @@ export class AudioEngine {
     if (this.basslinePattern) {
       const stepData = this.basslinePattern.sequence[step] as BasslineStep;
       const prevStep = this.basslinePattern.sequence[(step - 1 + this.stepsPerSequence) % this.stepsPerSequence] as BasslineStep;
-      playBasslineNote(stepData, prevStep, this.basslinePattern.params, time);
+      const nextStep = this.basslinePattern.sequence[(step + 1) % this.stepsPerSequence] as BasslineStep;
+      playBasslineNote(stepData, prevStep, nextStep, this.basslinePattern.params, time);
     }
   }
 

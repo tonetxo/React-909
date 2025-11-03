@@ -240,6 +240,7 @@ export const playSound = (
 export const playBasslineNote = (
   step: BasslineStep,
   prevStep: BasslineStep,
+  nextStep: BasslineStep,
   params: BasslineParams,
   time?: number
 ) => {
@@ -257,7 +258,7 @@ export const playBasslineNote = (
   channel.flangerSend.gain.setValueAtTime(params.flangerSend, now);
 
   // Call the dedicated synthesis function
-  playScheduledBasslineNote(context, now, step, prevStep, params, channel);
+  playScheduledBasslineNote(context, now, step, prevStep, nextStep, params, channel);
 };
 
 export const toggleVocoder = async (enabled: boolean) => {
