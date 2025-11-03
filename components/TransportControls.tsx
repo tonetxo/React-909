@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 import { TimeSignature } from '../types';
 
@@ -35,6 +35,42 @@ const TransportControls: React.FC<TransportControlsProps> = ({
   timeSignature,
   onTimeSignatureChange
 }) => {
+  const [tempoInput, setTempoInput] = useState(String(tempo));
+  const [swingInput, setSwingInput] = useState(String(swing));
+
+  useEffect(() => {
+    setTempoInput(String(tempo));
+  }, [tempo]);
+
+  useEffect(() => {
+    setSwingInput(String(swing));
+  }, [swing]);
+
+  const handleTempoSubmit = () => {
+    const newTempo = parseInt(tempoInput, 10);
+    if (!isNaN(newTempo) && newTempo >= 40 && newTempo <= 240) {
+      onTempoChange(newTempo);
+    } else {
+      setTempoInput(String(tempo)); // revert if invalid
+    }
+  };
+
+  const handleSwingSubmit = () => {
+    const newSwing = parseInt(swingInput, 10);
+    if (!isNaN(newSwing) && newSwing >= 0 && newSwing <= 100) {
+      onSwingChange(newSwing);
+    } else {
+      setSwingInput(String(swing)); // revert if invalid
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, submitter: () => void) => {
+    if (e.key === 'Enter') {
+      submitter();
+      e.currentTarget.blur();
+    }
+  };
+
   const timeSignatures: { label: string; value: TimeSignature }[] = [
     { label: '4/4', value: [4, 4] },
     { label: '3/4', value: [3, 4] },
@@ -72,7 +108,14 @@ const TransportControls: React.FC<TransportControlsProps> = ({
             onChange={(e) => onTempoChange(Number(e.target.value))}
             className="w-full accent-yellow-500"
             />
-            <span className="text-lg font-mono bg-gray-800 text-white px-3 py-1 rounded-md w-24 text-center">{tempo} BPM</span>
+            <input
+                type="text"
+                value={tempoInput}
+                onChange={(e) => setTempoInput(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, handleTempoSubmit)}
+                onBlur={handleTempoSubmit}
+                className="text-lg font-mono bg-gray-800 text-white px-3 py-1 rounded-md w-24 text-center"
+            />
         </div>
       
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3">
@@ -86,7 +129,14 @@ const TransportControls: React.FC<TransportControlsProps> = ({
             onChange={(e) => onSwingChange(Number(e.target.value))}
             className="w-full accent-yellow-500"
             />
-            <span className="text-lg font-mono bg-gray-800 text-white px-3 py-1 rounded-md w-24 text-center">{swing}%</span>
+            <input
+                type="text"
+                value={swingInput}
+                onChange={(e) => setSwingInput(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, handleSwingSubmit)}
+                onBlur={handleSwingSubmit}
+                className="text-lg font-mono bg-gray-800 text-white px-3 py-1 rounded-md w-24 text-center"
+            />
         </div>
 
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3">

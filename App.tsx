@@ -506,7 +506,7 @@ const App: React.FC = () => {
       <div className="w-full max-w-7xl mx-auto space-y-6">
         <header className="text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-yellow-400 tracking-tight">O Grove Son</h1>
-          <p className="text-gray-400 mt-1">A web-based step sequencer</p>
+          <p className="text-gray-400 mt-1">Unha caixa de ritmos con liña de baixo e vocoder</p>
         </header>
         <main className="space-y-6 flex flex-col items-center">
           <TransportControls isPlaying={isPlaying} onPlayToggle={handlePlayToggle} tempo={tempo} onTempoChange={handleTempoChange} swing={swing} onSwingChange={handleSwingChange} timeSignature={timeSignature} onTimeSignatureChange={handleTimeSignatureChange} />
