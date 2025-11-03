@@ -101,6 +101,7 @@ const App: React.FC = () => {
   })));
   const [selectedPatternIndex, setSelectedPatternIndex] = useState<number>(0);
   const [clipboard, setClipboard] = useState<Pattern | null>(null);
+  const [instrumentClipboard, setInstrumentClipboard] = useState<Velocity[] | null>(null);
   
   const [vocoderType, setVocoderType] = useState<VocoderType>('original');
   const [vocoderParams, setVocoderParams] = useState<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
@@ -316,6 +317,39 @@ const App: React.FC = () => {
   const handleParamChange = (id: string, param: keyof InstrumentParams, value: number) => updateCurrentPattern(p => ({ ...p, instruments: p.instruments.map(i => i.id === id ? { ...i, params: { ...i.params, [param]: value } } : i) }));
   const handleVolumeChange = (id: string, value: number) => updateCurrentPattern(p => ({ ...p, instruments: p.instruments.map(i => i.id === id ? { ...i, volume: value } : i) }));
 
+  const handleCopyInstrument = (instrumentId: string) => {
+    const instrument = activePattern.instruments.find(inst => inst.id === instrumentId);
+    if (instrument) {
+        setInstrumentClipboard(instrument.sequence);
+    }
+  };
+
+  const handlePasteInstrument = (instrumentId: string) => {
+      if (instrumentClipboard) {
+          updateCurrentPattern(p => {
+              const newInstruments = p.instruments.map(inst => {
+                  if (inst.id === instrumentId) {
+                      return { ...inst, sequence: [...instrumentClipboard] };
+                  }
+                  return inst;
+              });
+              return { ...p, instruments: newInstruments };
+          });
+      }
+  };
+
+  const handleClearInstrument = (instrumentId: string) => {
+      updateCurrentPattern(p => {
+          const newInstruments = p.instruments.map(inst => {
+              if (inst.id === instrumentId) {
+                  return { ...inst, sequence: Array(inst.sequence.length).fill(0) as Velocity[] };
+              }
+              return inst;
+          });
+          return { ...p, instruments: newInstruments };
+      });
+  };
+
   const handleSavePattern = () => {
     // The pattern is now updated in real-time, so we just need to save the project.
     saveProject(patterns, songSequence, isSongLooping);
@@ -481,7 +515,7 @@ const App: React.FC = () => {
           
           {isLoaded && (
             <>
-              <Sequencer instruments={instruments} currentStep={currentStep} selectedInstrumentId={selectedInstrumentId} timeSignature={timeSignature} onStepClick={handleStepClick} onStepClear={handleClearStep} onInstrumentSelect={handleInstrumentSelect} onMuteToggle={handleMuteToggle} onSoloToggle={handleSoloToggle} onParamChange={handleParamChange} onVolumeChange={handleVolumeChange} />
+              <Sequencer instruments={instruments} currentStep={currentStep} selectedInstrumentId={selectedInstrumentId} timeSignature={timeSignature} onStepClick={handleStepClick} onStepClear={handleClearStep} onInstrumentSelect={handleInstrumentSelect} onMuteToggle={handleMuteToggle} onSoloToggle={handleSoloToggle} onParamChange={handleParamChange} onVolumeChange={handleVolumeChange} onCopyInstrument={handleCopyInstrument} onPasteInstrument={handlePasteInstrument} onClearInstrument={handleClearInstrument} isInstrumentPasteDisabled={instrumentClipboard === null} />
               <BasslineSequencer basslinePattern={basslinePattern} currentStep={currentStep} timeSignature={timeSignature} onNoteClick={handleBasslineNoteClick} onStepClear={handleClearBasslineStep} onParamChange={handleBasslineParamChange} onControlToggle={handleBasslineControlToggle} />
               <VocoderControls 
                 params={vocoderParams} 

@@ -16,6 +16,10 @@ interface SequencerProps {
   onSoloToggle: (instrumentId: string) => void;
   onParamChange: (instrumentId: string, param: keyof InstrumentParams, value: number) => void;
   onVolumeChange: (instrumentId: string, value: number) => void;
+  onCopyInstrument: (instrumentId: string) => void;
+  onPasteInstrument: (instrumentId: string) => void;
+  onClearInstrument: (instrumentId: string) => void;
+  isInstrumentPasteDisabled: boolean;
 }
 
 const Sequencer: React.FC<SequencerProps> = ({ 
@@ -30,6 +34,10 @@ const Sequencer: React.FC<SequencerProps> = ({
   onSoloToggle,
   onParamChange,
   onVolumeChange,
+  onCopyInstrument,
+  onPasteInstrument,
+  onClearInstrument,
+  isInstrumentPasteDisabled,
 }) => {
   const stepsPerBeat = timeSignature[1] === 8 ? 3 : 4;
   const beatsPerMeasure = timeSignature[0];
@@ -51,6 +59,10 @@ const Sequencer: React.FC<SequencerProps> = ({
                 onSelect={onInstrumentSelect}
                 onMuteToggle={onMuteToggle}
                 onSoloToggle={onSoloToggle}
+                onCopy={onCopyInstrument}
+                onPaste={onPasteInstrument}
+                onClear={onClearInstrument}
+                isPasteDisabled={isInstrumentPasteDisabled}
               />
               <div className="flex items-center gap-1 ml-2 flex-grow">
                 {instrument.sequence.map((velocity, stepIndex) => {

@@ -1,7 +1,7 @@
 // state/AppState.ts
 import { useState, useEffect, useRef } from 'react';
 import { SequencerEngine, SequencerCallbacks } from '../sequencer/SequencerEngine';
-import { Pattern, TimeSignature } from '../types';
+import { Pattern, TimeSignature, Velocity } from '../types';
 import { useAudioScheduler } from '../hooks/useAudioScheduler'; // We'll update this later
 
 // Define the application state interface
@@ -39,6 +39,7 @@ const DEFAULT_STATE: AppState = {
 export const useAppState = () => {
   const [state, setState] = useState<AppState>(DEFAULT_STATE);
   const sequencerEngineRef = useRef<SequencerEngine | null>(null);
+  const clipboardRef = useRef<Velocity[] | null>(null);
 
   // Initialize the sequencer engine once
   useEffect(() => {
@@ -163,6 +164,45 @@ export const useAppState = () => {
     }
   };
 
+  const copyInstrumentPattern = (instrumentId: string) => {
+    const currentPattern = state.patterns[state.selectedPatternIndex];
+    if (!currentPattern) return;
+
+    const instrument = currentPattern.instruments.find(inst => inst.id === instrumentId);
+    if (instrument) {
+        clipboardRef.current = [...instrument.sequence];
+        // Force a re-render to update the disabled state of the paste button
+        setState(prev => ({...prev})); 
+    }
+  };
+
+  const pasteInstrumentPattern = (instrumentId: string) => {
+      if (!clipboardRef.current) return;
+
+      const updatedPatterns = [...state.patterns];
+      const currentPattern = updatedPatterns[state.selectedPatternIndex];
+      if (!currentPattern) return;
+
+      const instrumentIndex = currentPattern.instruments.findIndex(inst => inst.id === instrumentId);
+      if (instrumentIndex !== -1) {
+          currentPattern.instruments[instrumentIndex].sequence = [...clipboardRef.current];
+          setState(prev => ({ ...prev, patterns: updatedPatterns }));
+      }
+  };
+
+  const clearInstrumentPattern = (instrumentId: string) => {
+      const updatedPatterns = [...state.patterns];
+      const currentPattern = updatedPatterns[state.selectedPatternIndex];
+      if (!currentPattern) return;
+
+      const instrumentIndex = currentPattern.instruments.findIndex(inst => inst.id === instrumentId);
+      if (instrumentIndex !== -1) {
+          const sequenceLength = currentPattern.instruments[instrumentIndex].sequence.length;
+          currentPattern.instruments[instrumentIndex].sequence = Array(sequenceLength).fill(0) as Velocity[];
+          setState(prev => ({ ...prev, patterns: updatedPatterns }));
+      }
+  };
+
   return {
     state,
     togglePlayback,
@@ -175,5 +215,9 @@ export const useAppState = () => {
     setSongMode,
     setSongLoop,
     reloadCurrentPattern,
+    copyInstrumentPattern,
+    pasteInstrumentPattern,
+    clearInstrumentPattern,
+    isPasteDisabled: clipboardRef.current === null,
   };
 };
