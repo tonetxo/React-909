@@ -1,3 +1,4 @@
+/// <reference types="audioworklet" />
 
 // Helper function for MIDI to frequency conversion
 const midiToFreq = (midi: number): number => {

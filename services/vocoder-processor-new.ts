@@ -1,3 +1,4 @@
+/// <reference types="audioworklet" />
 
 // services/vocoder-processor-new.ts
 

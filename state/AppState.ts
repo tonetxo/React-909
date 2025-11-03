@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { SequencerEngine, SequencerCallbacks } from '../sequencer/SequencerEngine';
 import { Pattern, TimeSignature, Velocity } from '../types';
-import { useAudioScheduler } from '../hooks/useAudioScheduler'; // We'll update this later
+// import { useAudioScheduler } from '../hooks/useAudioScheduler'; // We'll update this later
 
 // Define the application state interface
 export interface AppState {

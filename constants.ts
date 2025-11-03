@@ -1,4 +1,4 @@
-import { Instrument, Velocity, BasslinePattern, ParamDefinition } from './types';
+import { Instrument, Velocity, BasslinePattern, ParamDefinition, VocoderParams } from './types';
 
 export const INITIAL_TEMPO = 120;
 export const INITIAL_SWING = 0;
