@@ -1,5 +1,5 @@
 import { Instrument, BasslinePattern, BasslineStep, Velocity } from '../types';
-import { playSound, playBasslineNote, ensureAudioInitialized } from '../services/audioService';
+import { playSound, playBasslineNote, ensureAudioInitialized, stopAllSounds } from '../services/audioService';
 
 type StepCallback = (step: number) => void;
 
@@ -81,6 +81,7 @@ export class AudioEngine {
       clearTimeout(this.lookaheadTimerId);
       this.lookaheadTimerId = null;
     }
+    stopAllSounds();
     // Note: This doesn't stop sounds that are already scheduled.
     // A full "panic" stop would require more complex gain management.
   }

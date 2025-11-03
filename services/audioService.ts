@@ -1,5 +1,5 @@
 import { Velocity, InstrumentParams, BasslineStep, BasslineParams, VocoderParams, VocoderCarrier, VocoderType } from '../types';
-import { playInstrument, playScheduledBasslineNote } from './synthesis';
+import { playInstrument, playScheduledBasslineNote, stopBassline } from './synthesis';
 
 let audioContext: AudioContext;
 let masterGain: GainNode;
@@ -259,6 +259,11 @@ export const playBasslineNote = (
 
   // Call the dedicated synthesis function
   playScheduledBasslineNote(context, now, step, prevStep, nextStep, params, channel);
+};
+
+export const stopAllSounds = () => {
+  if (!isInitialized) return;
+  stopBassline(audioContext);
 };
 
 export const toggleVocoder = async (enabled: boolean) => {

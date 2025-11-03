@@ -278,3 +278,22 @@ export const playScheduledBasslineNote = (
     basslineVcf = vcf;
     basslineVca = vca;
 };
+
+export const stopBassline = (context: AudioContext) => {
+    if (!context) return;
+    const now = context.currentTime;
+    if (basslineVca) {
+        basslineVca.gain.cancelScheduledValues(now);
+        basslineVca.gain.setTargetAtTime(0, now, 0.01);
+    }
+    if (basslineOsc) {
+        try {
+            basslineOsc.stop(now + 0.02);
+        } catch (e) {
+            // Oscillator might already be stopped
+        }
+    }
+    basslineOsc = null;
+    basslineVca = null;
+    basslineVcf = null;
+};
