@@ -42,14 +42,18 @@ export class AudioEngine {
 
         // Create the clock node
         this.clockNode = new AudioWorkletNode(this.audioContext, 'clock-processor');
+        this.clockNode.onprocessorerror = (e) => {
+            console.error("Error in clock-processor:", e);
+        };
 
         // Listen for ticks from the worklet
         this.clockNode.port.onmessage = (e: MessageEvent) => {
-            if (e.data.time) {
-                // Trust the worklet's timestamp completely, even if it appears to be in the
-                // past on the main thread. This compensates for the inherent latency between
-                // the two threads, as per the new synchronization strategy.
+            if (e.data.type === 'tick') {
                 this.midiService.sendTimingClock(e.data.time);
+            } else if (e.data.type === 'step') {
+                if (this.stepCallback && this.isRunning) {
+                    this.stepCallback(e.data.step);
+                }
             }
         };
 
@@ -198,22 +202,6 @@ export class AudioEngine {
 
   private playStepAtTime(step: number, time: number) {
     if (!this.audioContext) return;
-
-    // Calculate callback time without setTimeout to improve timing precision
-    const callbackTime = time - this.audioContext.currentTime;
-    if (callbackTime <= 0) {
-      // If the time has already passed, execute immediately
-      if (this.stepCallback && this.isRunning) {
-        this.stepCallback(step);
-      }
-    } else {
-      // Schedule the callback to run as close to the intended time as possible
-      setTimeout(() => {
-        if (this.stepCallback && this.isRunning) {
-          this.stepCallback(step);
-        }
-      }, callbackTime * 1000);
-    }
 
     const soloInstruments = this.instruments.filter(inst => inst.isSolo);
     this.instruments.forEach(instrument => {
