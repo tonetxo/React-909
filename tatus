@@ -1,0 +1,129 @@
+[33mcommit 9a0e119dbb18dddad86ab295fb0b22d2d68c55fb[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Mon Nov 3 21:06:21 2025 +0100
+
+    feat: Implement PWA and long-press for context menu
+
+[33mcommit 269db1c554bb687b999eb7f8bc96b353cfabb99f[m[33m ([m[1;31morigin/main[m[33m)[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Mon Nov 3 20:51:58 2025 +0100
+
+    Engadido README.md
+
+[33mcommit e9814d29af4f4852e50c6bac032d24b32fb70e99[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Mon Nov 3 20:48:01 2025 +0100
+
+    feat: Enable keyboard input for tempo and swing in TransportControls
+
+[33mcommit cf07b497e40bb0a0ff957345b16ba5514de1c45e[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Mon Nov 3 20:30:54 2025 +0100
+
+    fix: Resolve TypeScript syntax errors and add audioworklet types
+
+[33mcommit b3f8bd0279044c67030421ac08e6db9749b3766d[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Mon Nov 3 20:11:42 2025 +0100
+
+    feat: Add copy/paste/clear functionality for instrument patterns
+
+[33mcommit f7a7a381246181a53a06e8f5a92ecd2646504502[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Mon Nov 3 19:37:55 2025 +0100
+
+    arreglado el bug del sonido con stop
+
+[33mcommit 19b346c043ec0273dcc0829a5b949dc129a10933[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Mon Nov 3 19:23:44 2025 +0100
+
+    feat: Improve bassline tie, slide, and swing functionality
+    
+    This commit addresses several issues related to the bassline sequencer:
+    
+    - **Fix tie and slide logic:** Refactored the  function in  to correctly handle tied and slid notes. This involved removing the global  state, passing  information from the  down to the synthesis layer, and refining the conditions for note continuation. This ensures that tied notes sustain without retriggering and slid notes glide correctly.
+    - **Enhance swing feel:** Adjusted the swing calculation in  from a cubic to a quadratic curve and increased the multiplier. This makes the swing effect more pronounced and musically responsive across its range.
+
+[33mcommit d51ea964f80665a8c830939c2096d025033f3651[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Sun Nov 2 18:04:48 2025 +0100
+
+    engadido borrar con clic der y tie (falla)
+
+[33mcommit c6fc435e60e616b8f59aafa5271e066c3af6d0ee[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Sun Nov 2 17:31:31 2025 +0100
+
+    corrixido refresco doas parámetros
+
+[33mcommit 32381730eaffebf88c4db29c8700d79638783ed5[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Sat Nov 1 20:11:25 2025 +0100
+
+    Corrixido o modo song
+
+[33mcommit c3c93c2413f76e7f64b0e2e725999a348901d47e[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Fri Oct 31 19:16:13 2025 +0100
+
+    feat: Implement dynamic time signatures
+
+[33mcommit 096cd26e0f00abfea3e2ab2f5542997a1ef5a962[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Fri Oct 31 18:28:41 2025 +0100
+
+    feat: Remove redundant web-vocoder directory
+
+[33mcommit 27ac88ce12771b36db657e5a0af8c8719e926ee6[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Thu Oct 30 22:56:57 2025 +0100
+
+    va yendo, hay que mejorar elvocoder
+
+[33mcommit b3c8ef1a21cef6495925240a4e4b8d3bd4200ca7[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Thu Oct 30 22:15:14 2025 +0100
+
+    feat: integrate dual vocoder system with selector
+    
+    - Add new vocoder implementation based on web-vocoder code
+    - Implement coordinated management between original and new vocoders
+    - Add vocoder type selector in UI
+    - Create switchToVocoder function for proper mic resource management
+    - Update VocoderControls component to handle both vocoder types
+    - Fix microphone access and visualization for both vocoders
+    - Ensure only one vocoder accesses mic at a time to prevent conflicts
+    
+    Co-authored-by: Qwen-Coder <qwen-coder@alibabacloud.com>
+
+[33mcommit a033e2fbc0b0276e88e89df03f654e55e43b3ccb[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Thu Oct 30 17:41:53 2025 +0100
+
+    feat: Improve swing algorithm with non-linear curve
+    
+    - Refactor swing calculation in App.tsx to use a cubic curve for a more musical and less aggressive feel.
+    - Swing amount now scales non-linearly, making lower swing values more subtle and higher values more pronounced.
+
+[33mcommit 04361742daef682f84d62425ffea0b664424f613[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Thu Oct 30 17:16:50 2025 +0100
+
+    feat: Implement reset functionality and refine kick drum punch
+    
+    - Add a "Reset" button to PatternControls to reset all application state to defaults.
+    - Implement handleReset function in App.tsx to clear state and local storage.
+    - Refine kick drum "punch" parameter in audioService.ts for a more aggressive and intuitive effect.
+    - Fix ReferenceError: pitchEnd not defined in audioService.ts.
+    - Implement check for undefined parameter values in ParameterControls.tsx to prevent TypeError.
+    - Set default effect sends (reverb, delay, flanger) to 0 for all instruments and bassline in constants.ts.
+    - Ensure "metal" parameter is correctly applied to closed hi-hat.
+
+[33mcommit 14e879cde04fba8d77f983c8712f3fd2221eb57f[m
+Author: tonetxo <tonetxo@gmail.com>
+Date:   Wed Oct 29 19:37:28 2025 +0100
+
+    Vocoder improvements: enhanced envelope follower, reduced latency, fixed note retention
+    
+    Co-authored-by: Qwen-Coder <qwen-coder@alibabacloud.com>

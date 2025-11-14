@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Instrument } from '../types';
 import ContextMenu, { ContextMenuItem } from './ContextMenu';
 
@@ -26,10 +26,25 @@ const InstrumentControls: React.FC<InstrumentControlsProps> = ({
   isPasteDisabled,
 }) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const longPressTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  const handleContextMenu = (event: React.MouseEvent) => {
+  const handleContextMenu = (event: React.MouseEvent | React.TouchEvent) => {
     event.preventDefault();
-    setContextMenu({ x: event.clientX, y: event.clientY });
+    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+    const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
+    setContextMenu({ x: clientX, y: clientY });
+  };
+
+  const handleTouchStart = (event: React.TouchEvent) => {
+    longPressTimeout.current = setTimeout(() => {
+        handleContextMenu(event);
+    }, 500); // 500ms for long press
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimeout.current) {
+        clearTimeout(longPressTimeout.current);
+    }
   };
 
   const closeContextMenu = () => {
@@ -59,6 +74,9 @@ const InstrumentControls: React.FC<InstrumentControlsProps> = ({
       <button
         onClick={() => onSelect(instrument.id)}
         onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchEnd} // Cancel long press if finger moves
         className={nameButtonClasses}
       >
         {instrument.name}

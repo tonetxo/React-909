@@ -68,13 +68,17 @@ export class SequencerEngine {
   setSongMode(isActive: boolean) {
     this.isSongMode = isActive;
   }
+
+  setMidiOutput(outputName: string) {
+    this.audioEngine.setMidiOutput(outputName);
+  }
   
   private handleStepChange(step: number) {
     if (this.callbacks) {
+      this.callbacks.onStepChange(step);
       if (this.isSongMode) {
         this.callbacks.onSongStepChange(this.currentSongStep);
       }
-      this.callbacks.onStepChange(step);
     }
     
     // Check for pattern completion in song mode

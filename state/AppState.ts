@@ -87,7 +87,7 @@ export const useAppState = () => {
       const isCurrentlyPlaying = sequencerEngineRef.current.isPlayingState();
       if (isCurrentlyPlaying) {
         sequencerEngineRef.current.stop();
-        setState(prev => ({ ...prev, isPlaying: false }));
+        setState(prev => ({ ...prev, isPlaying: false, currentStep: null }));
       } else {
         sequencerEngineRef.current.start(state.tempo, state.swing);
         setState(prev => ({ ...prev, isPlaying: true }));
@@ -114,25 +114,17 @@ export const useAppState = () => {
 
   const setTempo = (tempo: number) => {
     setState(prev => ({ ...prev, tempo }));
-    // If playing, restart with new tempo by restarting the engine
+    // If playing, update tempo without restarting to maintain sync
     if (state.isPlaying && sequencerEngineRef.current) {
-      const currentPatternIndex = sequencerEngineRef.current.getCurrentPatternIndex();
-      sequencerEngineRef.current.stop();
-      sequencerEngineRef.current.loadPattern(currentPatternIndex); // Reload to get the new tempo
-      sequencerEngineRef.current.start(tempo, state.swing);
-      setState(prev => ({ ...prev, isPlaying: true })); // Keep playing state in sync
+      sequencerEngineRef.current.updateTempo(tempo);
     }
   };
 
   const setSwing = (swing: number) => {
     setState(prev => ({ ...prev, swing }));
-    // If playing, restart with new swing by restarting the engine
+    // If playing, update swing without restarting to maintain sync
     if (state.isPlaying && sequencerEngineRef.current) {
-      const currentPatternIndex = sequencerEngineRef.current.getCurrentPatternIndex();
-      sequencerEngineRef.current.stop();
-      sequencerEngineRef.current.loadPattern(currentPatternIndex); // Reload to get the new swing
-      sequencerEngineRef.current.start(state.tempo, swing);
-      setState(prev => ({ ...prev, isPlaying: true })); // Keep playing state in sync
+      sequencerEngineRef.current.updateSwing(swing);
     }
   };
 

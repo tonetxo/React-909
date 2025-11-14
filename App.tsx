@@ -6,6 +6,7 @@ import PatternControls from './components/PatternControls';
 import SongSequencer from './components/SongSequencer';
 import BasslineSequencer from './components/BasslineSequencer';
 import VocoderControls from './components/VocoderControls';
+import MidiOutputSelector from './components/MidiOutputSelector';
 import { Instrument, Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Waveform, BasslinePattern, VocoderParams, VocoderCarrier, VocoderType, TimeSignature } from './types';
 import { getInitialInstruments, INITIAL_TEMPO, INITIAL_SWING, getInitialBasslinePattern, INITIAL_VOCODER_PARAMS } from './constants';
 import { playSound, playBasslineNote, toggleVocoder, updateVocoderParams, startMicVisualizer, stopMicVisualizer, ensureAudioInitialized, setVocoderType as setAudioServiceVocoderType } from './services/audioService';
@@ -115,6 +116,8 @@ const App: React.FC = () => {
   const vocoderParamsRef = useRef<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
   vocoderParamsRef.current = vocoderParams;
 
+  const saveTimeoutRef = useRef<number | null>(null);
+
   // Song Mode State
   const [isSongModeActive, setIsSongModeActive] = useState<boolean>(false);
   const [songSequence, setSongSequence] = useState<(number | null)[]>(() => Array(SONG_STEPS).fill(null));
@@ -125,6 +128,9 @@ const App: React.FC = () => {
 
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   
+  // MIDI Output Selection
+  const [selectedMidiOutput, setSelectedMidiOutput] = useState<string>('');
+  
   const saveProject = (patternsToSave: (Pattern | null)[], songSeqToSave: (number | null)[], isLoopingToSave: boolean) => {
      try {
         const projectData: ProjectData = {
@@ -132,6 +138,7 @@ const App: React.FC = () => {
             song: { sequence: songSeqToSave, isLooping: isLoopingToSave },
         };
         localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projectData));
+        console.log("Project saved to localStorage.");
     } catch (error) {
         console.error("Failed to save project to localStorage:", error);
     }
@@ -174,6 +181,18 @@ const App: React.FC = () => {
         setIsLoaded(true);
     }
   }, []);
+
+  // Autosave project changes
+  useEffect(() => {
+    if (isLoaded) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      saveTimeoutRef.current = window.setTimeout(() => {
+        saveProject(patterns, songSequence, isSongLooping);
+      }, 1000); // Autosave after 1 second of inactivity
+    }
+  }, [patterns, songSequence, isSongLooping, isLoaded]);
   
 
 
@@ -448,6 +467,12 @@ const App: React.FC = () => {
     alert("Application state reset to defaults!");
   };
 
+  // --- MIDI Output Handlers ---
+  const handleMidiOutputChange = useCallback((outputName: string) => {
+    setSelectedMidiOutput(outputName);
+    sequencerEngine.setMidiOutput(outputName);
+  }, [sequencerEngine]);
+
   // --- Bassline Handlers ---
   const handleBasslineParamChange = (param: keyof BasslineParams, value: number | Waveform) => {
     updateCurrentPattern(p => ({ ...p, bassline: { ...p.bassline!, params: { ...p.bassline!.params, [param]: value } } }));
@@ -510,6 +535,7 @@ const App: React.FC = () => {
         </header>
         <main className="space-y-6 flex flex-col items-center">
           <TransportControls isPlaying={isPlaying} onPlayToggle={handlePlayToggle} tempo={tempo} onTempoChange={handleTempoChange} swing={swing} onSwingChange={handleSwingChange} timeSignature={timeSignature} onTimeSignatureChange={handleTimeSignatureChange} />
+          <MidiOutputSelector onOutputSelect={handleMidiOutputChange} />
           <PatternControls patterns={patterns} selectedPatternIndex={selectedPatternIndex} onLoad={handleLoadPattern} onSave={handleSavePattern} onExport={handleExportPatterns} onImport={handleImportPatterns} onCopy={handleCopyPattern} onPaste={handlePastePattern} isClipboardEmpty={clipboard === null} isPlaying={isPlaying} onReset={handleReset} />
           <SongSequencer sequence={songSequence} isActive={isSongModeActive} isLooping={isSongLooping} currentStep={currentSongStep} onToggle={handleToggleSongMode} onToggleLoop={handleToggleSongLoop} onStepClick={handleSongStepClick} onClear={handleClearSong} />
           

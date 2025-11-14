@@ -2,13 +2,22 @@
   "name": "react-tr-909-groovebox",
   "private": true,
   "version": "0.0.0",
+  "description": "Unha caixa de ritmos e secuenciador por pasos baseado na web inspirado no TR-909 con liña de baixo e funcionalidade de vocoder.",
   "type": "module",
+  "main": "electron.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron:dev": "electron .",
+    "electron:build": "vite build && electron-builder"
+  },
+  "author": {
+    "name": "Toño Pita",
+    "email": "tonetxo@gmail.com"
   },
   "dependencies": {
+    "easymidi": "^3.1.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
@@ -16,7 +25,27 @@
     "@types/audioworklet": "^0.0.90",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "electron": "^39.1.2",
+    "electron-builder": "^26.0.12",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vite-plugin-pwa": "^1.1.0",
+    "wait-on": "^9.0.3"
+  },
+  "build": {
+    "appId": "com.example.react-tr-909-groovebox",
+    "productName": "React TR-909 Groovebox",
+    "files": [
+      "dist/**/*",
+      "electron.cjs",
+      "package.json",
+      "services/*.js"
+    ],
+        "linux": {
+      "target": "AppImage"
+    },
+    "directories": {
+      "output": "release"
+    }  
   }
 }
