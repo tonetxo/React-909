@@ -1,9 +1,5 @@
 # O Grove Son
 
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
 ## Descrición
 
 O Grove Son é unha caixa de ritmos (groovebox) e secuenciador por pasos baseada na web, inspirada na lendaria Roland TR-909. Permite crear patróns de batería, liñas de baixo e experimentar con efectos de vocoder en tempo real, todo dende o teu navegador.
