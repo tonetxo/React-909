@@ -13,14 +13,12 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      // Add this to allow loading local files
-      webSecurity: false,
-      // Enable this to allow mixed content if needed
-      allowRunningInsecureContent: true,
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
       // Add preload script if needed in the future
-      // preload: path.join(__dirname, 'preload.cjs'),
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   });
 
