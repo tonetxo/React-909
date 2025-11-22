@@ -521,6 +521,13 @@ export class AudioEngine {
 
         if (this.isRunning) return;
 
+        // CRITICAL: Send Stop first to ensure slave is in clean state
+        // This prevents state inconsistencies from previous sessions
+        this.midiService.sendStop();
+
+        // Small delay to ensure Stop is processed before Start
+        await new Promise(resolve => setTimeout(resolve, 10));
+
         this.isRunning = true;
         this.tempo = tempo;
         this.swing = swing;
@@ -529,7 +536,8 @@ export class AudioEngine {
 
         // Calculate start time with proper offset to account for processing delays
         // We schedule the clock slightly in the future to account for message processing time
-        const startOffset = 0.025; // 25ms - reduced from 50ms for better precision at high tempos
+        // and AudioWorklet initialization. Higher offset = more reliable sync on first start.
+        const startOffset = 0.100; // 100ms - gives time for worklet and MIDI to stabilize
         const startTime = this.audioContext.currentTime + startOffset;
 
         // Send MIDI Start synchronized with the audio clock
@@ -578,7 +586,37 @@ export class AudioEngine {
     public updateTempo(newTempo: number) {
         this.tempo = newTempo;
         if (this.clockNode && this.isRunning) {
+            // When changing tempo while running, we need to resync the MIDI slave
+            // because the worklet resets its internal clock (ticksGenerated = 0)
+
+            // 1. Send Stop to clear slave state
+            this.midiService.sendStop();
+
+            // 2. Update the worklet tempo (which resets its clock)
             this.clockNode.port.postMessage({ command: 'updateTempo', value: newTempo });
+
+            // 3. Calculate new start time with offset
+            if (this.audioContext) {
+                const restartOffset = 0.050; // 50ms - shorter than initial start
+                const restartTime = this.audioContext.currentTime + restartOffset;
+
+                // 4. Send scheduled Start message
+                const currentPerformanceTime = window.performance.now();
+                const currentAudioTime = this.audioContext.currentTime;
+                const timeDifference = restartTime - currentAudioTime;
+                const restartPerformanceTime = currentPerformanceTime + (timeDifference * 1000);
+
+                this.midiService.sendStart(restartPerformanceTime);
+
+                // 5. Restart the worklet clock with new tempo
+                this.clockNode.port.postMessage({
+                    command: 'start',
+                    value: {
+                        tempo: newTempo,
+                        startTime: restartTime
+                    }
+                });
+            }
         }
     }
 

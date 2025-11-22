@@ -22,20 +22,18 @@ class ClockProcessor extends AudioWorkletProcessor {
       const { command, value } = e.data;
 
       if (command === 'updateTempo') {
+        const newTempo = value;
+        const newTickInterval = 60.0 / (newTempo * 24);
+
         if (this.isRunning) {
-          const newTempo = value;
-          const newTickInterval = 60.0 / (newTempo * 24);
-
-          // Recalculate origin to maintain phase continuity without jumps
-          // Use the next upcoming tick time as the base for better continuity
-          const previousOriginTime = this.syncOriginTime;
-          const previousTickInterval = this.tickInterval;
-          const nextScheduledTickTime = previousOriginTime + (this.ticksGenerated * previousTickInterval);
-
-          // Calculate new origin based on the next scheduled tick time to maintain phase
-          this.syncOriginTime = nextScheduledTickTime - (this.ticksGenerated * newTickInterval);
-          this.tickInterval = newTickInterval;
+          // When running, we need to reset the sync to avoid accumulated drift
+          // Reset to current time and start fresh tick counting
+          this.syncOriginTime = currentTime;
+          this.ticksGenerated = 0;
         }
+
+        // Always update the tick interval, even when stopped
+        this.tickInterval = newTickInterval;
       } else if (command === 'start') {
         const { tempo, startTime } = value;
         this.tickInterval = 60.0 / (tempo * 24);
