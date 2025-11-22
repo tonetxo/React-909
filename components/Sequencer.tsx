@@ -22,13 +22,13 @@ interface SequencerProps {
   isInstrumentPasteDisabled: boolean;
 }
 
-const Sequencer: React.FC<SequencerProps> = ({ 
-  instruments, 
-  currentStep, 
+const Sequencer: React.FC<SequencerProps> = React.memo(({
+  instruments,
+  currentStep,
   selectedInstrumentId,
   timeSignature,
   onStepClick,
-  onStepClear, // Added this prop
+  onStepClear,
   onInstrumentSelect,
   onMuteToggle,
   onSoloToggle,
@@ -53,7 +53,7 @@ const Sequencer: React.FC<SequencerProps> = ({
         {instruments.map((instrument, instrumentIndex) => (
           <div key={instrument.id}>
             <div className="flex">
-              <InstrumentControls 
+              <InstrumentControls
                 instrument={instrument}
                 isSelected={selectedInstrumentId === instrument.id}
                 onSelect={onInstrumentSelect}
@@ -82,7 +82,7 @@ const Sequencer: React.FC<SequencerProps> = ({
               </div>
             </div>
             {selectedInstrumentId === instrument.id && (
-              <ParameterControls 
+              <ParameterControls
                 instrument={instrument}
                 onParamChange={onParamChange}
                 onVolumeChange={onVolumeChange}
@@ -93,6 +93,6 @@ const Sequencer: React.FC<SequencerProps> = ({
       </div>
     </div>
   );
-};
+});
 
 export default Sequencer;

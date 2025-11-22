@@ -1,6 +1,6 @@
 // sequencer/SequencerEngine.ts
 import { Pattern } from '../types';
-import { AudioEngine } from '../audio/AudioEngine';
+import { AudioEngine, audioEngine } from '../services/audioService';
 
 export interface SequencerCallbacks {
   onStepChange: (step: number | null) => void;
@@ -22,33 +22,33 @@ export class SequencerEngine {
   private callbacks: SequencerCallbacks | null = null;
   private currentTempo: number = 120;
   private currentSwing: number = 0;
-  
+
   constructor() {
-    this.audioEngine = new AudioEngine();
+    this.audioEngine = audioEngine;
     this.audioEngine.setStepCallback(this.handleStepChange.bind(this));
   }
-  
+
   setCallbacks(callbacks: SequencerCallbacks) {
     this.callbacks = callbacks;
   }
-  
+
   setPatterns(patterns: (Pattern | null)[]) {
     // Create a deep copy of patterns to prevent reference sharing between engine and UI state
     this.patterns = patterns.map(pattern => {
       if (pattern === null) return null;
-      
+
       // Copy instruments array with deep copy of sequences
       const instruments = pattern.instruments.map(instr => ({
         ...instr,
         sequence: [...instr.sequence] // Copy the sequence array
       }));
-      
+
       // Copy bassline sequence if it exists
       const bassline = pattern.bassline ? {
         ...pattern.bassline,
-        sequence: pattern.bassline.sequence.map(step => ({...step})) // Copy each step
+        sequence: pattern.bassline.sequence.map(step => ({ ...step })) // Copy each step
       } : null;
-      
+
       return {
         ...pattern,
         instruments,
@@ -56,15 +56,15 @@ export class SequencerEngine {
       };
     });
   }
-  
+
   setSongSequence(sequence: (number | null)[]) {
     this.songSequence = sequence;
   }
-  
+
   setSongLooping(isLooping: boolean) {
     this.isSongLooping = isLooping;
   }
-  
+
   setSongMode(isActive: boolean) {
     this.isSongMode = isActive;
   }
@@ -72,7 +72,7 @@ export class SequencerEngine {
   setMidiOutput(outputName: string) {
     this.audioEngine.setMidiOutput(outputName);
   }
-  
+
   private handleStepChange(step: number) {
     if (this.callbacks) {
       this.callbacks.onStepChange(step);
@@ -80,13 +80,13 @@ export class SequencerEngine {
         this.callbacks.onSongStepChange(this.currentSongStep);
       }
     }
-    
+
     // Check for pattern completion in song mode
     if (this.isSongMode && this.isPatternComplete(step)) {
       this.handlePatternTransition();
     }
   }
-  
+
   private isPatternComplete(currentStep: number): boolean {
     // Check if it's the last step in the current pattern's sequence
     if (this.patterns[this.currentPatternIndex] && this.patterns[this.currentPatternIndex] !== null) {
@@ -96,7 +96,7 @@ export class SequencerEngine {
     }
     return false;
   }
-  
+
   private handlePatternTransition() {
     if (!this.isSongMode || this.currentSongStep === null) return;
 
@@ -152,13 +152,13 @@ export class SequencerEngine {
       if (this.callbacks) this.callbacks.onPlaybackEnd();
     }
   }
-  
+
   async start(tempo: number, swing: number) {
     this.currentTempo = tempo;
     this.currentSwing = swing;
 
     if (this.isPlaying) return;
-    
+
     let patternIndexToPlay = this.currentPatternIndex;
     if (this.isSongMode) {
       const firstSongStep = this.songSequence.findIndex(p => p !== null);
@@ -174,7 +174,7 @@ export class SequencerEngine {
         this.stop(); return;
       }
     }
-    
+
     this.currentPatternIndex = patternIndexToPlay;
     const pattern = this.patterns[this.currentPatternIndex];
 
@@ -195,19 +195,19 @@ export class SequencerEngine {
       );
     }
   }
-  
+
   stop() {
     if (this.isPlaying) {
       this.isPlaying = false;
       this.audioEngine.stop();
-      
+
       if (this.callbacks) {
         this.callbacks.onStepChange(null);
         this.callbacks.onSongStepChange(null);
       }
     }
   }
-  
+
   async togglePlayback(tempo: number, swing: number) {
     if (this.isPlaying) {
       this.stop();
@@ -215,7 +215,7 @@ export class SequencerEngine {
       await this.start(tempo, swing);
     }
   }
-  
+
   async loadPattern(patternIndex: number) {
     if (patternIndex >= 0 && patternIndex < this.patterns.length) {
       const newPattern = this.patterns[patternIndex];
@@ -224,8 +224,8 @@ export class SequencerEngine {
         this.currentPatternIndex = patternIndex;
 
         if (oldPattern &&
-            JSON.stringify(oldPattern.timeSignature) !== JSON.stringify(newPattern.timeSignature) &&
-            this.callbacks?.onTimeSignatureChange) {
+          JSON.stringify(oldPattern.timeSignature) !== JSON.stringify(newPattern.timeSignature) &&
+          this.callbacks?.onTimeSignatureChange) {
           this.callbacks.onTimeSignatureChange(newPattern.timeSignature);
         }
 
@@ -242,7 +242,7 @@ export class SequencerEngine {
       }
     }
   }
-  
+
   // Method to reload the current pattern during playback (useful for updating mute/solo states)
   async reloadCurrentPattern(updatedPattern?: Pattern) {
     const patternToReload = updatedPattern || this.patterns[this.currentPatternIndex];
@@ -270,23 +270,23 @@ export class SequencerEngine {
       this.audioEngine.updateSwing(swing);
     }
   }
-  
+
   getCurrentPatternIndex(): number {
     return this.currentPatternIndex;
   }
-  
+
   getCurrentStep(): number | null {
     return this.audioEngine.getCurrentStep();
   }
-  
+
   getCurrentSongStep(): number | null {
     return this.currentSongStep;
   }
-  
+
   isPlayingState(): boolean {
     return this.isPlaying;
   }
-  
+
   destroy() {
     this.audioEngine.destroy();
     this.stop();

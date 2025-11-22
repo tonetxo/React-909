@@ -6,22 +6,22 @@ echo "Validating MIDI sync improvements..."
 # Check that all key files have been updated
 echo "Checking updated files..."
 
-if grep -q "warmupPhase\|warmupTicks" ./services/clock-processor.ts; then
-    echo "✓ Clock processor has warmup logic"
+if grep -q "MAX_TICKS_THIS_BLOCK = 10" ./services/clock-processor.ts; then
+    echo "✓ Clock processor has relaxed rate limiting"
 else
-    echo "✗ Clock processor missing warmup logic"
+    echo "✗ Clock processor missing relaxed rate limiting"
 fi
 
-if grep -q "setTimeout.*send.*0xFA" ./services/MidiService.ts; then
-    echo "✓ MidiService has improved start timing"
+if grep -q "send(\[0xFA\], timestamp)" ./services/MidiService.ts; then
+    echo "✓ MidiService supports scheduled Start"
 else
-    echo "✗ MidiService missing improved start timing"
+    echo "✗ MidiService missing scheduled Start support"
 fi
 
-if grep -q "initialLookahead\|extended lookahead" ./audio/AudioEngine.ts; then
-    echo "✓ AudioEngine has improved scheduling"
+if grep -q "midiService.sendStart(startPerformanceTime)" ./services/audioService.ts; then
+    echo "✓ AudioEngine schedules Start with Clock"
 else
-    echo "✗ AudioEngine missing improved scheduling"
+    echo "✗ AudioEngine missing Start/Clock alignment"
 fi
 
 if grep -q "WARMUP Tick\|ppqnCounter > 48" ./electron-slave.js; then

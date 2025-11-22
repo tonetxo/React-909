@@ -15,12 +15,12 @@ interface PatternControlsProps {
     onReset: () => void; // Add onReset prop
 }
 
-const PatternControls: React.FC<PatternControlsProps> = ({ 
-    patterns, 
-    selectedPatternIndex, 
-    onLoad, 
-    onSave, 
-    onExport, 
+const PatternControls: React.FC<PatternControlsProps> = React.memo(({
+    patterns,
+    selectedPatternIndex,
+    onLoad,
+    onSave,
+    onExport,
     onImport,
     onCopy,
     onPaste,
@@ -36,7 +36,7 @@ const PatternControls: React.FC<PatternControlsProps> = ({
 
     return (
         <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700 w-full">
-             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 text-center">Patterns</h4>
+            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 text-center">Patterns</h4>
             <div className="flex items-center justify-center gap-4 flex-wrap">
                 <div className="flex gap-2" role="group" aria-label="Pattern Slots">
                     {patterns.map((pattern, index) => {
@@ -62,7 +62,7 @@ const PatternControls: React.FC<PatternControlsProps> = ({
                                 aria-label={`Select and load pattern ${index + 1}${hasData ? ' (has data)' : ''}`}
                             >
                                 {isCurrentlyPlaying && (
-                                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse" title="Currently Playing"></span>
+                                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse" title="Currently Playing"></span>
                                 )}
                                 {index + 1}
                             </button>
@@ -77,7 +77,7 @@ const PatternControls: React.FC<PatternControlsProps> = ({
                     >
                         Save
                     </button>
-                     <button
+                    <button
                         onClick={onCopy}
                         className="px-5 py-2 bg-gray-600 text-white font-bold rounded-md hover:bg-gray-500 transition-colors duration-200 shadow-lg h-10"
                         aria-label={`Copy current pattern to clipboard`}
@@ -125,6 +125,6 @@ const PatternControls: React.FC<PatternControlsProps> = ({
             </div>
         </div>
     );
-};
+});
 
 export default PatternControls;

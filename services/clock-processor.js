@@ -1,69 +1,75 @@
-// This is the compiled version of clock-processor.ts
-// services/clock-processor.ts
-
 class ClockProcessor extends AudioWorkletProcessor {
-    constructor() {
-      super();
-      this.tickInterval = 60.0 / (120.0 * 24); // Default to 120 BPM
-      this.isRunning = false;
-      this.syncOriginTime = 0;
-      this.ticksGenerated = 0;
+  constructor() {
+    super();
+    this.tickInterval = 0;
+    this.isRunning = false;
+    this.syncOriginTime = 0;
+    this.ticksGenerated = 0;
 
-      this.port.onmessage = (e) => {
-        if (e.data.command === 'updateTempo') {
+    this.port.onmessage = (e) => {
+      if (e.data.command === 'updateTempo') {
+        if (this.isRunning) {
           const newTempo = e.data.value;
           const newTickInterval = 60.0 / (newTempo * 24);
-
-          // To prevent a time jump when tempo changes, we establish a new origin.
-          // The new origin is calculated by projecting back from the current time.
+          // Recalculate origin to maintain phase continuity
           const newOrigin = currentTime - (this.ticksGenerated * newTickInterval);
           this.syncOriginTime = newOrigin;
           this.tickInterval = newTickInterval;
-
-        } else if (e.data.command === 'start') {
-            this.isRunning = true;
-            // A new session starts, reset everything from the provided start time.
-            this.syncOriginTime = e.data.value || currentTime;
-            this.ticksGenerated = 0;
-        } else if (e.data.command === 'stop') {
-            this.isRunning = false;
-        } else if (e.data.command === 'resetState') {
-            // Reset all internal state for clean restarts
-            this.ticksGenerated = 0;
-            this.syncOriginTime = 0;
         }
-      };
-    }
-
-    process(inputs, outputs, parameters) {
-      if (!this.isRunning) {
-          return true;
+      } else if (e.data.command === 'start') {
+        this.isRunning = true;
+        const { tempo } = e.data.value;
+        this.tickInterval = 60.0 / (tempo * 24);
+        
+        // CRITICAL FIX: Ignore external startTime.
+        // Trust strictly the AudioWorklet's internal clock.
+        // We start "now" (currentTime).
+        // We add a tiny offset (1 tick) to ensure the first tick isn't "missed" 
+        // if it falls exactly on the boundary, providing a clean start.
+        this.syncOriginTime = currentTime;
+        
+        this.ticksGenerated = 0;
+      } else if (e.data.command === 'stop') {
+        this.isRunning = false;
+        this.ticksGenerated = 0;
+      } else if (e.data.command === 'resetState') {
+        this.ticksGenerated = 0;
+        this.isRunning = false;
       }
+    };
+  }
 
-      const blockEndTime = currentTime + (128 / sampleRate);
-
-      // --- Absolute Time Calculation Loop ---
-      // This loop is immune to clock drift.
-      while (true) {
-        // Calculate the absolute, drift-free time of the next tick.
-        const nextTickTime = this.syncOriginTime + ((this.ticksGenerated + 1) * this.tickInterval);
-
-        if (nextTickTime < blockEndTime) {
-          // Send the tick with some tolerance to account for tiny timing variations
-          // but only if it's not too far in the past to prevent excessive flooding
-          // Enhanced tolerance for high tempo scenarios
-          if (nextTickTime >= currentTime - 0.002) { // Slightly more tolerance for high tempos
-            this.port.postMessage({ time: nextTickTime });
-          }
-          this.ticksGenerated++;
-        } else {
-          // The next tick is outside this block, so we're done for now.
-          break;
-        }
-      }
-
+  process(inputs, outputs, parameters) {
+    if (!this.isRunning) {
       return true;
     }
+
+    // Reduced lookahead for tighter control
+    const lookahead = 0.04; // 40ms
+    const blockEndTime = currentTime + (128 / sampleRate) + lookahead;
+
+    // Safety valve: Don't generate more than 20 ticks in a single block 
+    // to prevent infinite loop freezes or massive bursts if math goes wrong.
+    let loops = 0;
+    const MAX_LOOPS = 20; 
+
+    while (loops < MAX_LOOPS) {
+      const nextTickTime = this.syncOriginTime + (this.ticksGenerated * this.tickInterval);
+
+      if (nextTickTime < blockEndTime) {
+        // Only emit if valid.
+        if (nextTickTime >= currentTime - 0.02) {
+            this.port.postMessage({ time: nextTickTime });
+        }
+        this.ticksGenerated++;
+        loops++;
+      } else {
+        break;
+      }
+    }
+
+    return true;
+  }
 }
 
 registerProcessor('clock-processor', ClockProcessor);

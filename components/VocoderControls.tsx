@@ -10,13 +10,13 @@ interface VocoderControlsProps {
     stopVisualizer: () => void;
 }
 
-const ParamSlider: React.FC<{ 
-    id: string; 
-    label: string; 
-    min: number; 
-    max: number; 
-    step: number; 
-    value: number; 
+const ParamSlider: React.FC<{
+    id: string;
+    label: string;
+    min: number;
+    max: number;
+    step: number;
+    value: number;
     onChange: (value: number) => void;
     unit?: string;
     disabled?: boolean;
@@ -41,7 +41,7 @@ const ParamSlider: React.FC<{
     </div>
 );
 
-const VocoderControls: React.FC<VocoderControlsProps> = ({ params, onParamChange, vocoderType, onVocoderTypeChange, startVisualizer, stopVisualizer }) => {
+const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, onParamChange, vocoderType, onVocoderTypeChange, startVisualizer, stopVisualizer }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const carriers: { id: VocoderCarrier, label: string }[] = [
         { id: 'drums', label: 'Drums' },
@@ -69,15 +69,13 @@ const VocoderControls: React.FC<VocoderControlsProps> = ({ params, onParamChange
                         onClick={() => onParamChange('enabled', !params.enabled)}
                         role="switch"
                         aria-checked={params.enabled}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${
-                        params.enabled ? 'bg-yellow-500' : 'bg-gray-600'
-                        }`}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${params.enabled ? 'bg-yellow-500' : 'bg-gray-600'
+                            }`}
                     >
                         <span
-                        aria-hidden="true"
-                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            params.enabled ? 'translate-x-5' : 'translate-x-0'
-                        }`}
+                            aria-hidden="true"
+                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${params.enabled ? 'translate-x-5' : 'translate-x-0'
+                                }`}
                         />
                     </button>
                 </div>
@@ -107,21 +105,21 @@ const VocoderControls: React.FC<VocoderControlsProps> = ({ params, onParamChange
                             ))}
                         </div>
                     </div>
-                    
+
                     <ParamSlider id="vocoder-mix" label="Mix" min={0} max={1} step={0.01} value={params.mix} onChange={(v) => onParamChange('mix', v)} disabled={!params.enabled} />
                     <ParamSlider id="vocoder-formant" label="Formant" min={-12} max={12} step={1} value={params.formantShift} onChange={(v) => onParamChange('formantShift', v)} unit="st" disabled={!params.enabled} />
-                    
-                    <ParamSlider 
-                        id="vocoder-pitch" 
-                        label="Synth Pitch" 
-                        min={24} max={72} step={1} 
-                        value={params.synthPitch} 
-                        onChange={(v) => onParamChange('synthPitch', v)} 
+
+                    <ParamSlider
+                        id="vocoder-pitch"
+                        label="Synth Pitch"
+                        min={24} max={72} step={1}
+                        value={params.synthPitch}
+                        onChange={(v) => onParamChange('synthPitch', v)}
                         unit="MIDI"
                         disabled={!params.enabled || params.carrier !== 'synth'}
                     />
                 </div>
-                
+
                 <div className="flex flex-col items-center">
                     <label className="text-xs text-gray-400 font-medium mb-1">Mic In</label>
                     <div className="w-16 h-24 bg-gray-900 rounded border border-gray-700">
@@ -142,6 +140,6 @@ const VocoderControls: React.FC<VocoderControlsProps> = ({ params, onParamChange
             </div>
         </div>
     );
-};
+});
 
 export default VocoderControls;
