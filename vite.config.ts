@@ -56,8 +56,8 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
-          'clock-processor': path.resolve(__dirname, 'services/clock-processor.ts'),
-          'vocoder-processor': path.resolve(__dirname, 'services/vocoder-processor.ts'),
+          'clock-processor': path.resolve(__dirname, 'services/clock-processor.js'),
+          'vocoder-processor': path.resolve(__dirname, 'services/vocoder-processor.js'),
         },
         output: {
           entryFileNames: (chunkInfo) => {

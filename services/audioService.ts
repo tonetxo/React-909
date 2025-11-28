@@ -33,7 +33,7 @@ export class AudioEngine {
 
     // --- Vocoder ---
     private vocoderWorkletNode: AudioWorkletNode | null = null;
-    private currentVocoderType: VocoderType = 'original'; // Kept for UI compatibility, but underlying engine is unified
+    private currentVocoderType: VocoderType = 'original';
     private carrierInput: GainNode | null = null;
     private currentCarrierType: VocoderCarrier | null = null;
     private vocoderEnabled = false;
@@ -48,7 +48,7 @@ export class AudioEngine {
     // --- Sequencing & Scheduling ---
     private stepCallback: StepCallback | null = null;
     private midiService: MidiService;
-    private clockNode: AudioWorkletNode | null = null;
+    private startMessageSent: boolean = false;
 
     private isRunning: boolean = false;
     private currentStep: number = 0;
@@ -59,12 +59,15 @@ export class AudioEngine {
     private basslinePattern: BasslinePattern | null = null;
 
     private nextStepTime: number = 0.0;
-    private scheduleAheadTime: number = 0.15; // seconds
+    private scheduleAheadTime: number = 0.15;
     private lookaheadTimerId: number | null = null;
-    private readonly lookaheadPeriod: number = 50.0; // ms
+    private readonly lookaheadPeriod: number = 50.0;
+
+    // Anchor points for absolute time calculation to prevent drift
+    private anchorAudioTime: number = 0;
+    private anchorPerfTime: number = 0;
 
     constructor() {
-        // Singleton instance is created on export
         this.midiService = new MidiService();
     }
 
@@ -112,12 +115,10 @@ export class AudioEngine {
             this.masterGain.gain.value = 0.7;
             this.masterGain.connect(this.audioContext.destination);
 
-            // --- Create Effects ---
             await this.setupEffects();
 
-            // --- Create Buses ---
             this.drumBus = this.audioContext.createGain();
-            this.drumBus.gain.value = 1.5; // Boost drum volume
+            this.drumBus.gain.value = 1.5;
             this.bassBus = this.audioContext.createGain();
             this.bassBus.gain.value = 1.0;
 
@@ -126,7 +127,6 @@ export class AudioEngine {
                 this.bassBus.connect(this.masterGain);
             }
 
-            // --- Create Channel Strips ---
             const instrumentIds = ['kick', 'snare', 'clap', 'low_tom', 'mid_tom', 'hi_tom', 'hihat', 'openhat'];
             instrumentIds.forEach(id => {
                 if (this.audioContext) {
@@ -142,10 +142,7 @@ export class AudioEngine {
                 if (this.bassBus) bassChannel.dry.connect(this.bassBus);
             }
 
-            // --- Initialize Vocoder ---
             await this.initVocoderWorklets();
-
-            // --- Initialize Clock ---
             await this.initClock();
 
             this.isInitialized = true;
@@ -155,83 +152,33 @@ export class AudioEngine {
     };
 
     private async initClock() {
-        if (!this.audioContext) return;
-
-        // CLEANUP: Ensure no previous clock node is running to prevent double-clocking
-        if (this.clockNode) {
-            try {
-                this.clockNode.port.postMessage({ command: 'stop' });
-                this.clockNode.disconnect();
-                this.clockNode.port.close();
-            } catch (e) {
-                console.warn("Error cleaning up old clock node:", e);
+        if (this.audioContext) {
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
             }
-            this.clockNode = null;
-        }
-
-        try {
-            await this.audioContext.audioWorklet.addModule(new URL('./clock-processor.js', import.meta.url));
-            this.clockNode = new AudioWorkletNode(this.audioContext, 'clock-processor');
-
-            this.clockNode.port.onmessage = (e: MessageEvent) => {
-                if (e.data.time && this.audioContext) {
-                    // Correctly convert audio context time to performance time
-                    // Get the current relationship between audio context time and performance time
-                    const currentPerformanceTime = window.performance.now();
-                    const currentAudioTime = this.audioContext.currentTime;
-
-                    // Calculate the performance time that corresponds to the worklet's scheduled time
-                    const timeDifference = e.data.time - currentAudioTime;
-                    const scheduledPerformanceTime = currentPerformanceTime + (timeDifference * 1000);
-
-                    // Apply minimal compensation for system transport delay
-                    const compensatedPerformanceTime = scheduledPerformanceTime + 0.2; // 0.2ms compensation
-
-                    // Ensure we never schedule in the past to maintain timing accuracy
-                    const finalPerformanceTime = Math.max(compensatedPerformanceTime, currentPerformanceTime - 1); // Allow 1ms tolerance
-
-                    this.midiService.sendTimingClock(finalPerformanceTime);
-                }
-            };
-
-            this.clockNode.connect(this.audioContext.destination);
-        } catch (error) {
-            console.error("Error loading or creating Clock AudioWorklet:", error);
         }
     }
 
     private async initVocoderWorklets() {
         if (!this.audioContext) return;
         try {
-            // Load the unified vocoder processor (formerly new)
             await this.audioContext.audioWorklet.addModule(new URL('./vocoder-processor.js', import.meta.url));
             this.carrierInput = this.audioContext.createGain();
 
-            // Note: The processor is registered as 'vocoder-processor-new' inside the TS file
             this.vocoderWorkletNode = new AudioWorkletNode(this.audioContext, 'vocoder-processor-new', {
                 numberOfInputs: 1,
                 numberOfOutputs: 1,
                 outputChannelCount: [1],
-                processorOptions: {
-                    sampleRate: this.audioContext.sampleRate
-                }
+                processorOptions: { sampleRate: this.audioContext.sampleRate }
             });
 
-            // Connect carrier input is handled via routing buses directly to carrierInput, 
-            // but the new processor design might handle carrier differently or mix internally.
-            // Based on previous code, the new processor takes 1 input (modulator) and generates carrier internally 
-            // OR mixes. Let's keep the carrierInput setup just in case future expansion needs it, 
-            // but the current 'vocoder-processor-new' seems to handle carrier generation internally or via params.
-
-            console.log("Vocoder AudioWorklet initialized successfully.");
+            console.log("Vocoder AudioWorklet initialized.");
         } catch (e) {
-            console.error("Error loading or creating vocoder AudioWorklet:", e);
+            console.error("Error loading vocoder AudioWorklet:", e);
         }
     }
 
     public setVocoderType(type: VocoderType) {
-        // This method is now largely cosmetic as we only have one engine,
-        // but we can keep it if we want to switch presets in the future.
         if (type === this.currentVocoderType) return;
         this.currentVocoderType = type;
     }
@@ -239,7 +186,6 @@ export class AudioEngine {
     private setupEffects = async () => {
         if (!this.audioContext || !this.masterGain) return;
 
-        // Reverb
         this.reverbNode = this.audioContext.createConvolver();
         const reverbGain = this.audioContext.createGain();
         reverbGain.gain.value = 1.5;
@@ -248,7 +194,6 @@ export class AudioEngine {
         const impulse = await this.generateImpulseResponse();
         this.reverbNode.buffer = impulse;
 
-        // Delay
         this.delayNode = this.audioContext.createDelay(1.0);
         this.delayFeedback = this.audioContext.createGain();
         this.delayFeedback.gain.value = 0.4;
@@ -257,7 +202,6 @@ export class AudioEngine {
         this.delayNode.connect(this.masterGain);
         this.delayNode.delayTime.value = 0.375;
 
-        // Flanger
         this.flangerNode = this.audioContext.createDelay(0.01);
         this.flangerFeedback = this.audioContext.createGain();
         this.flangerLFO = this.audioContext.createOscillator();
@@ -299,7 +243,6 @@ export class AudioEngine {
     ) {
         if (!this.isInitialized || !this.audioContext) return;
         const now = time ?? this.audioContext.currentTime;
-
         const channel = this.channelStrips.get(instrumentId);
         if (!channel) return;
 
@@ -320,7 +263,6 @@ export class AudioEngine {
     ) {
         if (!this.isInitialized || !this.audioContext) return;
         const now = time ?? this.audioContext.currentTime;
-
         const channel = this.channelStrips.get('bassline');
         if (!channel) return;
 
@@ -340,70 +282,48 @@ export class AudioEngine {
     public toggleVocoder = async (enabled: boolean) => {
         await this.ensureAudioInitialized();
         if (!this.vocoderWorkletNode) {
-            console.error("Vocoder is not available.");
-            alert("Vocoder processor failed to load. Please check the console for errors.");
+            console.error("Vocoder not available.");
             return;
         }
 
         if (enabled) {
             if (this.micStream) return;
             try {
-                console.log("Requesting microphone access...");
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: false,
-                        sampleRate: this.audioContext!.sampleRate,
-                    }
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false }
                 });
-
                 this.micStream = stream;
-                this.micSource = this.audioContext!.createMediaStreamSource(this.micStream);
-                this.micAnalyser = this.audioContext!.createAnalyser();
+                this.micSource = this.audioContext.createMediaStreamSource(this.micStream);
+                this.micAnalyser = this.audioContext.createAnalyser();
                 this.micAnalyser.fftSize = 256;
 
-                // Connect Mic -> Vocoder -> Master
                 this.micSource.connect(this.vocoderWorkletNode);
                 this.vocoderWorkletNode.connect(this.masterGain!);
-
                 this.micSource.connect(this.micAnalyser);
 
                 this.vocoderEnabled = true;
-                console.log(`Microphone access granted. Vocoder enabled.`);
-
             } catch (err) {
-                console.error('Error accessing microphone:', err);
-                alert('Microphone access denied. Please grant permission to use the vocoder.');
+                console.error('Mic access denied:', err);
                 throw err;
             }
         } else {
-            if (!this.micStream || !this.micSource) return;
-
-            console.log("Disabling vocoder and disconnecting microphone.");
-
-            this.micSource.disconnect();
-            try {
-                this.vocoderWorkletNode.disconnect(this.masterGain!);
-            } catch (e) { }
-
-            this.micStream.getTracks().forEach(track => track.stop());
+            if (this.micSource) this.micSource.disconnect();
+            if (this.vocoderWorkletNode && this.masterGain) this.vocoderWorkletNode.disconnect(this.masterGain);
+            if (this.micStream) this.micStream.getTracks().forEach(t => t.stop());
 
             this.micStream = null;
             this.micSource = null;
             this.micAnalyser = null;
             this.vocoderEnabled = false;
-            console.log("Vocoder disabled.");
         }
     };
 
     public updateVocoderParams(params: VocoderParams) {
-        if (!this.isInitialized || !this.vocoderWorkletNode || !this.carrierInput || !this.audioContext) return;
+        if (!this.isInitialized || !this.vocoderWorkletNode || !this.audioContext) return;
 
         const now = this.audioContext.currentTime;
         const p = this.vocoderWorkletNode.parameters;
 
-        // Apply parameters to the single unified node
         p.get('voiceGain')?.setTargetAtTime(params.voiceGain ?? 30, now, 0.01);
         p.get('noiseGate')?.setTargetAtTime(params.noiseGate ?? 5, now, 0.01);
         p.get('attack')?.setTargetAtTime(params.attack ?? 0.001, now, 0.01);
@@ -416,45 +336,16 @@ export class AudioEngine {
         if (params.carrierWaveform) {
             this.vocoderWorkletNode.port.postMessage({ type: 'SET_CARRIER_WAVEFORM', value: params.carrierWaveform });
         }
-
-        // Legacy carrier routing handling (kept if needed for future external carrier support)
-        if (params.carrier !== this.currentCarrierType) {
-            if (this.currentCarrierType) {
-                if (this.currentCarrierType === 'drums' || this.currentCarrierType === 'both') {
-                    try { this.drumBus?.disconnect(this.carrierInput); } catch (e) { }
-                }
-                if (this.currentCarrierType === 'bass' || this.currentCarrierType === 'both') {
-                    try { this.bassBus?.disconnect(this.carrierInput); } catch (e) { }
-                }
-            }
-
-            switch (params.carrier) {
-                case 'drums':
-                    this.drumBus?.connect(this.carrierInput);
-                    break;
-                case 'bass':
-                    this.bassBus?.connect(this.carrierInput);
-                    break;
-                case 'both':
-                    this.drumBus?.connect(this.carrierInput);
-                    this.bassBus?.connect(this.carrierInput);
-                    break;
-                case 'synth':
-                    break;
-            }
-            this.currentCarrierType = params.carrier;
-        }
-    };
+    }
 
     public startMicVisualizer(canvas: HTMLCanvasElement) {
         const canvasCtx = canvas.getContext('2d');
         if (!canvasCtx) return;
 
         const draw = () => {
-            this.visualizerFrameId = requestAnimationFrame(draw);
-
             if (!this.vocoderEnabled || !this.micAnalyser) {
                 canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+                this.visualizerFrameId = requestAnimationFrame(draw);
                 return;
             }
 
@@ -475,18 +366,18 @@ export class AudioEngine {
 
             canvasCtx.fillStyle = 'rgb(250 204 21)';
             canvasCtx.fillRect(0, canvas.height - height, canvas.width, height);
+
+            this.visualizerFrameId = requestAnimationFrame(draw);
         };
         draw();
-    };
+    }
 
     public stopMicVisualizer() {
         if (this.visualizerFrameId) {
             cancelAnimationFrame(this.visualizerFrameId);
             this.visualizerFrameId = null;
         }
-    };
-
-    // --- Sequencing Methods ---
+    }
 
     public setStepCallback(callback: StepCallback) {
         this.stepCallback = callback;
@@ -503,10 +394,8 @@ export class AudioEngine {
     ) {
         this.instruments = instruments;
         this.basslinePattern = basslinePattern;
-        if (stepsPerSequence !== this.stepsPerSequence) {
-            this.stepsPerSequence = stepsPerSequence;
-            this.currentStep = 0;
-        }
+        this.stepsPerSequence = stepsPerSequence;
+        this.currentStep = 0;
     }
 
     public async start(
@@ -521,46 +410,38 @@ export class AudioEngine {
 
         if (this.isRunning) return;
 
-        // CRITICAL: Send Stop first to ensure slave is in clean state
-        // This prevents state inconsistencies from previous sessions
-        this.midiService.sendStop();
-
-        // Small delay to ensure Stop is processed before Start
-        await new Promise(resolve => setTimeout(resolve, 10));
-
         this.isRunning = true;
         this.tempo = tempo;
         this.swing = swing;
         this.setPattern(instruments, basslinePattern, stepsPerSequence);
-        this.currentStep = 0;
 
-        // Calculate start time with proper offset to account for processing delays
-        // We schedule the clock slightly in the future to account for message processing time
-        // and AudioWorklet initialization. Higher offset = more reliable sync on first start.
-        const startOffset = 0.100; // 100ms - gives time for worklet and MIDI to stabilize
+        // Use a safe offset for stability - Increased to 0.3s for maximum robustness
+        const startOffset = 0.3;
         const startTime = this.audioContext.currentTime + startOffset;
 
-        // Send MIDI Start synchronized with the audio clock
-        // We convert the AudioContext time to Performance time for WebMIDI
-        const currentPerformanceTime = window.performance.now();
-        const currentAudioTime = this.audioContext.currentTime;
-        const timeDifference = startTime - currentAudioTime;
-        const startPerformanceTime = currentPerformanceTime + (timeDifference * 1000);
+        console.log(`Starting sequencer: audioTime=${startTime.toFixed(3)}s (Sync: Internal, Robust Anchor)`);
 
-        // Send Start scheduled at the exact same time as the first clock tick
-        this.midiService.sendStart(startPerformanceTime);
+        // Establish timing anchors for Absolute Drift Correction
+        // SIMPLIFIED: Use current performance.now() and audio.currentTime relationship directly
+        // This avoids jitter from getOutputTimestamp() implementations in some environments
+        const nowPerf = performance.now();
+        const nowAudio = this.audioContext.currentTime;
+        
+        // Anchor: When audio reaches startTime, performance time will be:
+        this.anchorPerfTime = nowPerf + ((startTime - nowAudio) * 1000);
+        this.anchorAudioTime = startTime;
 
-        if (this.clockNode) {
-            this.clockNode.port.postMessage({
-                command: 'start',
-                value: {
-                    tempo: this.tempo,
-                    startTime: startTime
-                }
-            });
-        }
+        // Calculate MIDI Start time with latency compensation
+        const manualOffset = (window as any).MIDI_LATENCY_OFFSET || 0.0;
+        const outputLatency = (this.audioContext.outputLatency || 0.0) + manualOffset;
+        
+        // MIDI Start should happen when audio starts physically exiting the device
+        const midiStartTime = this.anchorPerfTime + (outputLatency * 1000);
+        
+        // Send Start 1ms before
+        this.midiService.sendStart(midiStartTime - 1.0);
+        this.startMessageSent = true;
 
-        // Align internal audio sequencer with the MIDI clock start time
         this.nextStepTime = startTime;
         this.scheduleNextSteps();
     }
@@ -573,51 +454,21 @@ export class AudioEngine {
         }
 
         this.stopAllSounds();
+        this.startMessageSent = false;
         this.midiService.sendStop();
-
-        if (this.clockNode) {
-            this.clockNode.port.postMessage({ command: 'stop' });
-        }
-
+        
         this.currentStep = 0;
         this.nextStepTime = 0.0;
+        this.anchorAudioTime = 0;
+        this.anchorPerfTime = 0;
     }
 
     public updateTempo(newTempo: number) {
         this.tempo = newTempo;
-        if (this.clockNode && this.isRunning) {
-            // When changing tempo while running, we need to resync the MIDI slave
-            // because the worklet resets its internal clock (ticksGenerated = 0)
-
-            // 1. Send Stop to clear slave state
-            this.midiService.sendStop();
-
-            // 2. Update the worklet tempo (which resets its clock)
-            this.clockNode.port.postMessage({ command: 'updateTempo', value: newTempo });
-
-            // 3. Calculate new start time with offset
-            if (this.audioContext) {
-                const restartOffset = 0.050; // 50ms - shorter than initial start
-                const restartTime = this.audioContext.currentTime + restartOffset;
-
-                // 4. Send scheduled Start message
-                const currentPerformanceTime = window.performance.now();
-                const currentAudioTime = this.audioContext.currentTime;
-                const timeDifference = restartTime - currentAudioTime;
-                const restartPerformanceTime = currentPerformanceTime + (timeDifference * 1000);
-
-                this.midiService.sendStart(restartPerformanceTime);
-
-                // 5. Restart the worklet clock with new tempo
-                this.clockNode.port.postMessage({
-                    command: 'start',
-                    value: {
-                        tempo: newTempo,
-                        startTime: restartTime
-                    }
-                });
-            }
-        }
+        // In a perfect drift-free implementation, changing tempo requires 
+        // re-anchoring at the moment of change. For now, we accept simple update
+        // as drift is corrected relative to start, but tempo changes might introduce phase shift.
+        // TODO: Implement sophisticated tempo ramp handling if needed.
     }
 
     public updateSwing(newSwing: number) {
@@ -629,10 +480,13 @@ export class AudioEngine {
 
         const stepDuration = 60.0 / this.tempo / 4.0;
         const currentPlayTime = this.audioContext.currentTime;
+        
+        // Latency compensation
+        const manualOffset = (window as any).MIDI_LATENCY_OFFSET || 0.0;
+        const outputLatency = (this.audioContext.outputLatency || 0.0) + manualOffset;
 
         while (this.nextStepTime < currentPlayTime + this.scheduleAheadTime) {
-            this.playStepAtTime(this.currentStep, this.nextStepTime);
-
+            // Calculate swing for this step
             let currentStepDuration = stepDuration;
             if (this.swing > 0) {
                 const swingAmount = Math.pow(this.swing / 100, 2) * 0.5;
@@ -641,6 +495,38 @@ export class AudioEngine {
                 } else {
                     currentStepDuration = Math.max(0.001, stepDuration * (1 - swingAmount));
                 }
+            }
+
+            // Schedule Audio - Safety check: Don't play if time is too close to now
+            if (this.nextStepTime >= currentPlayTime - 0.02) {
+                 this.playStepAtTime(this.currentStep, this.nextStepTime);
+            }
+
+            // Schedule MIDI Clock (6 ticks per 16th note step)
+            // Use Absolute Calculation based on Anchors to prevent drift
+            const tickDuration = currentStepDuration / 6;
+            for (let i = 0; i < 6; i++) {
+                const tickAudioTime = this.nextStepTime + (i * tickDuration);
+                
+                // Calculate precise time elapsed since start
+                const timeFromStart = tickAudioTime - this.anchorAudioTime;
+                
+                // Calculate absolute performance time for this tick using the ROBUST ANCHOR
+                const tickPerfTime = this.anchorPerfTime + (timeFromStart * 1000) + (outputLatency * 1000);
+                
+                this.midiService.sendTimingClock(tickPerfTime);
+            }
+
+            // Schedule UI callback
+            const callbackTime = this.nextStepTime - this.audioContext.currentTime;
+            if (callbackTime > 0) {
+                setTimeout(() => {
+                    if (this.stepCallback && this.isRunning) {
+                        this.stepCallback(this.currentStep);
+                    }
+                }, callbackTime * 1000);
+            } else if (this.stepCallback && this.isRunning) {
+                this.stepCallback(this.currentStep);
             }
 
             this.nextStepTime += currentStepDuration;
@@ -652,19 +538,6 @@ export class AudioEngine {
 
     private playStepAtTime(step: number, time: number) {
         if (!this.audioContext) return;
-
-        const callbackTime = time - this.audioContext.currentTime;
-        if (callbackTime <= 0) {
-            if (this.stepCallback && this.isRunning) {
-                this.stepCallback(step);
-            }
-        } else {
-            setTimeout(() => {
-                if (this.stepCallback && this.isRunning) {
-                    this.stepCallback(step);
-                }
-            }, callbackTime * 1000);
-        }
 
         const soloInstruments = this.instruments.filter(inst => inst.isSolo);
         this.instruments.forEach(instrument => {
@@ -695,26 +568,15 @@ export class AudioEngine {
 
     public destroy() {
         this.stop();
-        if (this.clockNode) {
-            try {
-                this.clockNode.port.postMessage({ command: 'stop' });
-                this.clockNode.disconnect();
-                this.clockNode.port.close();
-            } catch (e) { }
-            this.clockNode = null;
-        }
-        // Close MIDI connections if possible (needs MidiService support)
     }
 }
 
-// Singleton management for HMR
 declare global {
     var __AUDIO_ENGINE__: AudioEngine | undefined;
 }
 
 if (import.meta.hot) {
     if (globalThis.__AUDIO_ENGINE__) {
-        console.log("♻️ HMR: Destroying previous AudioEngine instance to prevent resource leaks.");
         globalThis.__AUDIO_ENGINE__.destroy();
     }
 }

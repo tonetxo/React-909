@@ -166,6 +166,8 @@ export const playInstrument = (
   }
 };
 
+let lastBasslineTime = 0;
+
 export const playScheduledBasslineNote = (
     context: AudioContext,
     time: number,
@@ -175,6 +177,12 @@ export const playScheduledBasslineNote = (
     params: BasslineParams,
     channel: SynthesisChannelStrip
 ) => {
+    // Prevent duplicate scheduling for the exact same time (debounce)
+    if (Math.abs(time - lastBasslineTime) < 0.001) {
+        return;
+    }
+    lastBasslineTime = time;
+
     const freq = step.note ? midiToFreq(step.note) : 0;
     const velocityGain = 0.5 + (step.velocity / 5) * 0.5;
     const isAccent = step.velocity > 3;

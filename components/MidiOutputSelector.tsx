@@ -12,11 +12,13 @@ const MidiOutputSelector: React.FC<MidiOutputSelectorProps> = React.memo(({ onOu
       if (navigator.requestMIDIAccess) {
         try {
           const midiAccess = await navigator.requestMIDIAccess();
-          const outputDevices = Array.from(midiAccess.outputs.values());
+          const outputDevices = Array.from(midiAccess.outputs.values())
+            .filter(output => 
+              // Filter out inputs that appear as outputs (common in Linux/ALSA for virtual ports)
+              !output.name.toLowerCase().includes('input')
+            );
           setOutputs(outputDevices);
-          if (outputDevices.length > 0) {
-            onOutputSelect(outputDevices[0].name);
-          }
+          // Default to None - user must explicitly select a port
         } catch (error) {
           console.error('Error accessing MIDI devices:', error);
         }
@@ -25,23 +27,6 @@ const MidiOutputSelector: React.FC<MidiOutputSelectorProps> = React.memo(({ onOu
 
     getMidiOutputs();
   }, [onOutputSelect]);
-
-  useEffect(() => {
-    if (outputs.length > 0) {
-        // Intelligent auto-selection
-        const preferred = outputs.find(o => 
-            !o.name.toLowerCase().includes('through') && 
-            !o.name.toLowerCase().includes('midi through')
-        );
-        
-        if (preferred) {
-            onOutputSelect(preferred.name);
-        } else {
-            // If only "Through" ports exist, default to None to be safe
-            onOutputSelect('');
-        }
-    }
-  }, [outputs, onOutputSelect]);
 
   return (
     <div className="grid grid-cols-[auto_1fr] items-center gap-x-3">

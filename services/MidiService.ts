@@ -73,8 +73,10 @@ export class MidiService {
         try {
             if (timestamp) {
                 this.midiOutput.send([0xFA], timestamp);
+                console.log(`MIDI: Sent Start message (timestamp: ${timestamp.toFixed(2)}ms)`);
             } else {
                 this.midiOutput.send([0xFA]);
+                console.log(`MIDI: Sent Start message (immediate)`);
             }
         } catch (e) {
             console.warn("Failed to send start message:", e);
@@ -86,6 +88,10 @@ export class MidiService {
             console.warn("No MIDI output available, cannot send MIDI Stop message");
             return;
         }
+
+        // Reset diagnostic counter
+        this.clockMessageCount = 0;
+
         // Send stop message to reset slave state
         try {
             // Send immediate stop message
@@ -114,6 +120,8 @@ export class MidiService {
         this.midiOutput.send([0xFB]);
     }
 
+    private clockMessageCount = 0; // Diagnostic counter
+
     public sendTimingClock(timestamp: number): void {
         if (!this.midiOutput) {
             return;
@@ -121,8 +129,11 @@ export class MidiService {
         try {
             // The timestamp should be a DOMHighResTimeStamp in milliseconds (performance.now() time base).
             this.midiOutput.send([0xF8], timestamp);
+
+            // Diagnostic logging removed for production stability
         } catch (e) {
-            // Ignore buffer full errors
+            // Log errors instead of silently ignoring
+            console.error('MIDI Clock send error:', e);
         }
     }
 
@@ -134,39 +145,19 @@ export class MidiService {
 
     public getAvailableOutputs(): string[] {
         if (!this.midiAccess) return [];
-        return Array.from(this.midiAccess.outputs.values()).map(output => output.name);
+        // Filter out "Midi Through" and ports that look like inputs to prevent feedback loops and confusion
+        return Array.from(this.midiAccess.outputs.values())
+            .filter(output => 
+                !output.name.includes('Midi Through') && 
+                !output.name.toLowerCase().includes('input')
+            )
+            .map(output => output.name);
     }
 
     // Method to check for potential feedback routes
     public checkPotentialFeedback(): void {
         if (!this.midiAccess) return;
-
-        console.log("Checking for potential MIDI feedback routes...");
-
-        // Check if any output is connected to any input in a way that could cause feedback
-        const outputs = Array.from(this.midiAccess.outputs.values());
-        const inputs = Array.from(this.midiAccess.inputs.values());
-
-        console.log(`Found ${outputs.length} output(s) and ${inputs.length} input(s)`);
-
-        for (const output of outputs) {
-            for (const input of inputs) {
-                if (output.name === input.name) {
-                    console.warn(`WARNING: Output and input with the same name detected: "${output.name}". This could cause feedback loops.`);
-                }
-            }
-        }
-
-        // Check for common feedback-prone configurations
-        const feedbackProneOutputs = outputs.filter(output =>
-            output.name.toLowerCase().includes('through') ||
-            output.name.toLowerCase().includes('midi through')
-        );
-
-        if (feedbackProneOutputs.length > 0) {
-            console.warn("WARNING: Found potentially feedback-prone outputs:", feedbackProneOutputs.map(o => o.name));
-            console.log("Consider using dedicated virtual MIDI ports for synchronization to avoid feedback.");
-        }
+        // (Logic simplified as we now filter the UI list directly)
     }
 
     public getAllInputs(): WebMidi.MIDIInput[] {

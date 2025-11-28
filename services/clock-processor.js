@@ -5,64 +5,79 @@ class ClockProcessor extends AudioWorkletProcessor {
     this.isRunning = false;
     this.syncOriginTime = 0;
     this.ticksGenerated = 0;
+    this.RESYNC_THRESHOLD = 0.3; // seconds
 
     this.port.onmessage = (e) => {
-      if (e.data.command === 'updateTempo') {
-        if (this.isRunning) {
-          const newTempo = e.data.value;
-          const newTickInterval = 60.0 / (newTempo * 24);
-          // Recalculate origin to maintain phase continuity
-          const newOrigin = currentTime - (this.ticksGenerated * newTickInterval);
-          this.syncOriginTime = newOrigin;
-          this.tickInterval = newTickInterval;
+      const { command, value } = e.data;
+
+      if (command === 'updateTempo') {
+        const newTempo = value;
+        const newTickInterval = 60.0 / (newTempo * 24);
+
+        if (this.isRunning && this.ticksGenerated > 0) {
+          // FIX: Use the last generated tick time as reference instead of currentTime.
+          // Since we use lookahead, we might have generated ticks in the future.
+          // Resetting to currentTime would cause "time travel" (timestamps going backward).
+          
+          // NewOrigin = OldOrigin + (n-1) * (OldInterval - NewInterval)
+          // This ensures that Tick(n) = Tick(n-1) + NewInterval
+          this.syncOriginTime = this.syncOriginTime + (this.ticksGenerated - 1) * (this.tickInterval - newTickInterval);
         }
-      } else if (e.data.command === 'start') {
-        this.isRunning = true;
-        const { tempo } = e.data.value;
+
+        this.tickInterval = newTickInterval;
+      } else if (command === 'start') {
+        const { tempo, startTime } = value;
         this.tickInterval = 60.0 / (tempo * 24);
-        
-        // CRITICAL FIX: Ignore external startTime.
-        // Trust strictly the AudioWorklet's internal clock.
-        // We start "now" (currentTime).
-        // We add a tiny offset (1 tick) to ensure the first tick isn't "missed" 
-        // if it falls exactly on the boundary, providing a clean start.
-        this.syncOriginTime = currentTime;
-        
+
+        // ✅ CRITICAL: Use the scheduled startTime, not currentTime
+        // This ensures perfect alignment with the audio engine's plan
+        this.syncOriginTime = startTime;
         this.ticksGenerated = 0;
-      } else if (e.data.command === 'stop') {
+        this.isRunning = true;
+      } else if (command === 'stop') {
         this.isRunning = false;
         this.ticksGenerated = 0;
-      } else if (e.data.command === 'resetState') {
-        this.ticksGenerated = 0;
-        this.isRunning = false;
+        this.syncOriginTime = 0;
       }
     };
   }
 
   process(inputs, outputs, parameters) {
-    if (!this.isRunning) {
-      return true;
-    }
+    if (!this.isRunning || this.tickInterval === 0) return true;
 
-    // Reduced lookahead for tighter control
-    const lookahead = 0.04; // 40ms
+    // Lookahead set to 0.1s (100ms) - Balance between stability and responsiveness
+    const lookahead = 0.1; 
     const blockEndTime = currentTime + (128 / sampleRate) + lookahead;
 
-    // Safety valve: Don't generate more than 20 ticks in a single block 
-    // to prevent infinite loop freezes or massive bursts if math goes wrong.
-    let loops = 0;
-    const MAX_LOOPS = 20; 
+    // Prevent infinite loops
+    const MAX_TICKS_PER_BLOCK = 24;
+    let ticksSent = 0;
 
-    while (loops < MAX_LOOPS) {
+    while (ticksSent < MAX_TICKS_PER_BLOCK) {
       const nextTickTime = this.syncOriginTime + (this.ticksGenerated * this.tickInterval);
 
       if (nextTickTime < blockEndTime) {
-        // Only emit if valid.
-        if (nextTickTime >= currentTime - 0.02) {
-            this.port.postMessage({ time: nextTickTime });
+        // If we're too far behind, resync to avoid burst
+        if (currentTime - nextTickTime > this.RESYNC_THRESHOLD) {
+          console.warn(`Clock resync: too far behind (${(currentTime - nextTickTime).toFixed(3)}s)`);
+          this.syncOriginTime = currentTime - (this.ticksGenerated * this.tickInterval);
+          continue;
         }
+
+        // Only send ticks that are not in the distant past (relaxed to 0.1s)
+        if (nextTickTime >= currentTime - 0.1) {
+          this.port.postMessage({ time: nextTickTime });
+
+          // Diagnostic logging (remove after debugging)
+          // if (this.ticksGenerated % 24 === 0) { 
+          //   console.log(`Worklet: Generated tick #${this.ticksGenerated} at ${nextTickTime.toFixed(3)}s`);
+          // }
+        } else {
+          console.warn(`Skipped tick #${this.ticksGenerated} (too far in past)`);
+        }
+
         this.ticksGenerated++;
-        loops++;
+        ticksSent++;
       } else {
         break;
       }
