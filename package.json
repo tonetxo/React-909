@@ -7,6 +7,7 @@
   "main": "electron.cjs",
   "scripts": {
     "dev": "vite",
+    "start": "concurrently -k \"npm run dev\" \"wait-on tcp:3000 && npm run electron:dev\"",
     "build": "vite build",
     "preview": "vite preview",
     "electron:dev": "electron .",
@@ -25,6 +26,7 @@
     "@types/audioworklet": "^0.0.90",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.1",
     "electron": "^39.1.2",
     "electron-builder": "^26.0.12",
     "typescript": "~5.8.2",
@@ -41,11 +43,17 @@
       "package.json",
       "services/*.js"
     ],
-        "linux": {
+    "linux": {
       "target": "AppImage"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "directories": {
       "output": "release"
-    }  
+    }
   }
 }
