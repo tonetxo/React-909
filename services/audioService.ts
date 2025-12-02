@@ -47,6 +47,7 @@ export class AudioEngine {
 
     // --- Sequencing & Scheduling ---
     private stepCallback: StepCallback | null = null;
+    private onStopCallback: (() => void) | null = null;
     private midiService: MidiService;
     private startMessageSent: boolean = false;
 
@@ -57,6 +58,15 @@ export class AudioEngine {
     private stepsPerSequence: number = 16;
     private instruments: Instrument[] = [];
     private basslinePattern: BasslinePattern | null = null;
+
+    // Pattern Queuing for Song Mode
+    private nextPattern: {
+        instruments: Instrument[],
+        bassline: BasslinePattern | null,
+        stepsPerSequence: number
+    } | null = null;
+
+    private stopAtEndOfPattern: boolean = false;
 
     private nextStepTime: number = 0.0;
     private scheduleAheadTime: number = 0.15;
@@ -383,19 +393,38 @@ export class AudioEngine {
         this.stepCallback = callback;
     }
 
+    public setOnStopCallback(callback: () => void) {
+        this.onStopCallback = callback;
+    }
+
     public setMidiOutput(outputName: string) {
         this.midiService.setMidiOutput(outputName);
     }
 
-    public setPattern(
+    public setPattern(instruments: Instrument[], bassline: BasslinePattern, stepsPerSequence: number) {
+        this.instruments = instruments;
+        this.basslinePattern = bassline;
+        this.stepsPerSequence = stepsPerSequence;
+        // Do NOT clear nextPattern or stopAtEndOfPattern here.
+        // This method is called by the UI to update the *current* pattern (e.g. mutes, parameter changes).
+        // Clearing the queue would break Song Mode transitions if the UI updates just before a transition.
+    }
+
+    public queuePattern(
         instruments: Instrument[],
         basslinePattern: BasslinePattern | null,
         stepsPerSequence: number
     ) {
-        this.instruments = instruments;
-        this.basslinePattern = basslinePattern;
-        this.stepsPerSequence = stepsPerSequence;
-        this.currentStep = 0;
+        this.nextPattern = {
+            instruments,
+            bassline: basslinePattern,
+            stepsPerSequence
+        };
+        this.stopAtEndOfPattern = false;
+    }
+
+    public setStopAtEndOfPattern(shouldStop: boolean) {
+        this.stopAtEndOfPattern = shouldStop;
     }
 
     public async start(
@@ -410,23 +439,25 @@ export class AudioEngine {
 
         if (this.isRunning) return;
 
+        // Reset queue state on start to ensure fresh playback
+        this.nextPattern = null;
+        this.stopAtEndOfPattern = false;
+
         this.isRunning = true;
         this.tempo = tempo;
         this.swing = swing;
         this.setPattern(instruments, basslinePattern, stepsPerSequence);
 
-        // Use a safe offset for stability - Increased to 0.3s for maximum robustness
-        const startOffset = 0.3;
+        // Use a safe offset for stability
+        const startOffset = 0.25;
         const startTime = this.audioContext.currentTime + startOffset;
-
-        console.log(`Starting sequencer: audioTime=${startTime.toFixed(3)}s (Sync: Internal, Robust Anchor)`);
 
         // Establish timing anchors for Absolute Drift Correction
         // SIMPLIFIED: Use current performance.now() and audio.currentTime relationship directly
         // This avoids jitter from getOutputTimestamp() implementations in some environments
         const nowPerf = performance.now();
         const nowAudio = this.audioContext.currentTime;
-        
+
         // Anchor: When audio reaches startTime, performance time will be:
         this.anchorPerfTime = nowPerf + ((startTime - nowAudio) * 1000);
         this.anchorAudioTime = startTime;
@@ -434,10 +465,10 @@ export class AudioEngine {
         // Calculate MIDI Start time with latency compensation
         const manualOffset = (window as any).MIDI_LATENCY_OFFSET || 0.0;
         const outputLatency = (this.audioContext.outputLatency || 0.0) + manualOffset;
-        
+
         // MIDI Start should happen when audio starts physically exiting the device
         const midiStartTime = this.anchorPerfTime + (outputLatency * 1000);
-        
+
         // Send Start 1ms before
         this.midiService.sendStart(midiStartTime - 1.0);
         this.startMessageSent = true;
@@ -456,11 +487,19 @@ export class AudioEngine {
         this.stopAllSounds();
         this.startMessageSent = false;
         this.midiService.sendStop();
-        
+
         this.currentStep = 0;
         this.nextStepTime = 0.0;
         this.anchorAudioTime = 0;
         this.anchorPerfTime = 0;
+
+        if (this.onStopCallback) {
+            this.onStopCallback();
+        }
+
+        // Reset queue state
+        this.nextPattern = null;
+        this.stopAtEndOfPattern = false;
     }
 
     public updateTempo(newTempo: number) {
@@ -480,7 +519,7 @@ export class AudioEngine {
 
         const stepDuration = 60.0 / this.tempo / 4.0;
         const currentPlayTime = this.audioContext.currentTime;
-        
+
         // Latency compensation
         const manualOffset = (window as any).MIDI_LATENCY_OFFSET || 0.0;
         const outputLatency = (this.audioContext.outputLatency || 0.0) + manualOffset;
@@ -499,7 +538,7 @@ export class AudioEngine {
 
             // Schedule Audio - Safety check: Don't play if time is too close to now
             if (this.nextStepTime >= currentPlayTime - 0.02) {
-                 this.playStepAtTime(this.currentStep, this.nextStepTime);
+                this.playStepAtTime(this.currentStep, this.nextStepTime);
             }
 
             // Schedule MIDI Clock (6 ticks per 16th note step)
@@ -507,30 +546,57 @@ export class AudioEngine {
             const tickDuration = currentStepDuration / 6;
             for (let i = 0; i < 6; i++) {
                 const tickAudioTime = this.nextStepTime + (i * tickDuration);
-                
+
                 // Calculate precise time elapsed since start
                 const timeFromStart = tickAudioTime - this.anchorAudioTime;
-                
+
                 // Calculate absolute performance time for this tick using the ROBUST ANCHOR
                 const tickPerfTime = this.anchorPerfTime + (timeFromStart * 1000) + (outputLatency * 1000);
-                
+
                 this.midiService.sendTimingClock(tickPerfTime);
             }
 
             // Schedule UI callback
             const callbackTime = this.nextStepTime - this.audioContext.currentTime;
+            const stepToNotify = this.currentStep; // Capture current value for closure
             if (callbackTime > 0) {
                 setTimeout(() => {
                     if (this.stepCallback && this.isRunning) {
-                        this.stepCallback(this.currentStep);
+                        this.stepCallback(stepToNotify);
                     }
                 }, callbackTime * 1000);
             } else if (this.stepCallback && this.isRunning) {
-                this.stepCallback(this.currentStep);
+                this.stepCallback(stepToNotify);
             }
 
             this.nextStepTime += currentStepDuration;
-            this.currentStep = (this.currentStep + 1) % this.stepsPerSequence;
+
+            // Check for pattern transition at the end of the sequence
+            if (this.currentStep === this.stepsPerSequence - 1) {
+                if (this.stopAtEndOfPattern) {
+                    this.stop();
+                    // We need to notify the UI that playback stopped.
+                    // The stepCallback might have already fired for the last step.
+                    // But we usually have an onPlaybackEnd callback in SequencerEngine.
+                    // SequencerEngine will see stop() state eventually?
+                    // Actually, AudioEngine.stop() clears everything.
+                    return;
+                }
+
+                if (this.nextPattern) {
+                    // Apply queued pattern
+                    this.instruments = this.nextPattern.instruments;
+                    this.basslinePattern = this.nextPattern.bassline;
+                    this.stepsPerSequence = this.nextPattern.stepsPerSequence;
+                    this.nextPattern = null;
+                    this.currentStep = 0;
+                } else {
+                    // Loop current pattern
+                    this.currentStep = 0;
+                }
+            } else {
+                this.currentStep++;
+            }
         }
 
         this.lookaheadTimerId = window.setTimeout(() => this.scheduleNextSteps(), this.lookaheadPeriod);

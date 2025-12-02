@@ -22,10 +22,20 @@ export class SequencerEngine {
   private callbacks: SequencerCallbacks | null = null;
   private currentTempo: number = 120;
   private currentSwing: number = 0;
+  private queuedPatternIndex: number | null = null;
+  private ignoreFirstStepZero: boolean = false;
 
   constructor() {
     this.audioEngine = audioEngine;
     this.audioEngine.setStepCallback(this.handleStepChange.bind(this));
+    this.audioEngine.setOnStopCallback(() => {
+      this.isPlaying = false;
+      if (this.callbacks) {
+        this.callbacks.onPlaybackEnd();
+        this.callbacks.onStepChange(null);
+        this.callbacks.onSongStepChange(null);
+      }
+    });
   }
 
   setCallbacks(callbacks: SequencerCallbacks) {
@@ -81,23 +91,38 @@ export class SequencerEngine {
       }
     }
 
-    // Check for pattern completion in song mode
-    if (this.isSongMode && this.isPatternComplete(step)) {
-      this.handlePatternTransition();
+    // Ignore the very first step 0 event after start(), as we already set up the initial state
+    // and queued the next pattern. We just want to clear the flag.
+    if (step === 0 && this.ignoreFirstStepZero) {
+      this.ignoreFirstStepZero = false;
+      return;
+    }
+
+    // Handle queued pattern transition at the start of the new pattern
+    if (step === 0 && this.queuedPatternIndex !== null) {
+      this.currentPatternIndex = this.queuedPatternIndex;
+      this.queuedPatternIndex = null;
+
+      if (this.queuedSongStep !== null) {
+        this.currentSongStep = this.queuedSongStep;
+        this.queuedSongStep = null;
+      }
+
+      if (this.callbacks) {
+        this.callbacks.onPatternChange(this.currentPatternIndex);
+        if (this.isSongMode) {
+          this.callbacks.onSongStepChange(this.currentSongStep);
+        }
+      }
+    }
+
+    // Queue next pattern early in the current pattern (at step 0)
+    if (this.isSongMode && step === 0) {
+      this.queueNextPattern();
     }
   }
 
-  private isPatternComplete(currentStep: number): boolean {
-    // Check if it's the last step in the current pattern's sequence
-    if (this.patterns[this.currentPatternIndex] && this.patterns[this.currentPatternIndex] !== null) {
-      const pattern = this.patterns[this.currentPatternIndex]!;
-      const expectedSteps = pattern.instruments[0]?.sequence.length || 16;
-      return currentStep === expectedSteps - 1;
-    }
-    return false;
-  }
-
-  private handlePatternTransition() {
+  private queueNextPattern() {
     if (!this.isSongMode || this.currentSongStep === null) return;
 
     let nextSongStep = -1;
@@ -124,34 +149,47 @@ export class SequencerEngine {
     if (nextSongStep !== -1) {
       const nextPatternIndex = this.songSequence[nextSongStep];
       if (nextPatternIndex !== null && this.patterns[nextPatternIndex]) {
-        this.currentSongStep = nextSongStep;
-        this.currentPatternIndex = nextPatternIndex;
-        const pattern = this.patterns[this.currentPatternIndex]!;
+        // We don't update currentSongStep/currentPatternIndex yet.
+        // We just queue it in the audio engine and store the index for later.
 
-        if (this.isPlaying) {
-          // Instead of restarting, just update the pattern data
-          this.audioEngine.setPattern(
-            pattern.instruments,
-            pattern.bassline!,
-            pattern.instruments[0]?.sequence.length || 16
-          );
-        }
+        // Store the NEXT song step so we can update it when the pattern actually switches
+        // Wait, currentSongStep needs to be updated when the switch happens.
+        // We can store it in a temp variable or just recalculate it? 
+        // Better to store the *next* song step index too if needed, but for now let's just update currentSongStep here?
+        // NO. If we update currentSongStep here, the UI might highlight the wrong step before it plays.
+        // Let's store nextSongStep in a property? 
+        // Actually, let's just update currentSongStep when the switch happens.
+        // But we need to know *which* song step corresponds to queuedPatternIndex.
+        // Let's store `queuedSongStep` as well.
 
-        if (this.callbacks) {
-          this.callbacks.onPatternChange(this.currentPatternIndex);
-          this.callbacks.onSongStepChange(this.currentSongStep);
-        }
+        this.queuedPatternIndex = nextPatternIndex;
+        this.queuedSongStep = nextSongStep;
+
+        const pattern = this.patterns[nextPatternIndex]!;
+        this.audioEngine.queuePattern(
+          pattern.instruments,
+          pattern.bassline!,
+          this.getPatternLength(pattern)
+        );
       } else {
-        // Next pattern is invalid, treat as end of song
-        this.stop();
-        if (this.callbacks) this.callbacks.onPlaybackEnd();
+        // Next pattern invalid - maybe stop?
+        // For now, let's just not queue anything, which will cause a loop or stop depending on audio engine logic.
+        // Audio engine loops by default if nothing queued.
+        // We should probably explicitly stop if it's the end of the song.
+        if (nextSongStep === -1) {
+          // End of song - tell audio engine to stop after current pattern
+          this.audioEngine.setStopAtEndOfPattern(true);
+        }
       }
     } else {
-      // No more patterns to play
-      this.stop();
-      if (this.callbacks) this.callbacks.onPlaybackEnd();
+      // End of song
+      this.audioEngine.setStopAtEndOfPattern(true);
     }
   }
+
+  private queuedSongStep: number | null = null;
+
+
 
   async start(tempo: number, swing: number) {
     this.currentTempo = tempo;
@@ -186,13 +224,24 @@ export class SequencerEngine {
           this.callbacks.onSongStepChange(this.currentSongStep);
         }
       }
+      if (this.isSongMode) {
+        this.ignoreFirstStepZero = true;
+      }
+
+      const patternLength = this.getPatternLength(pattern);
       await this.audioEngine.start(
         tempo,
         swing,
         pattern.instruments,
         pattern.bassline!,
-        pattern.instruments[0]?.sequence.length || 16
+        patternLength
       );
+
+      // Immediately queue the next pattern (or stop) to avoid missed deadlines for short patterns
+      // or if the first pattern needs to transition immediately.
+      if (this.isSongMode) {
+        this.queueNextPattern();
+      }
     }
   }
 
@@ -290,5 +339,14 @@ export class SequencerEngine {
   destroy() {
     this.audioEngine.destroy();
     this.stop();
+  }
+
+  private getPatternLength(pattern: Pattern): number {
+    if (pattern.instruments && pattern.instruments.length > 0) {
+      // Find the first instrument with a sequence and use its length
+      const instr = pattern.instruments.find(i => i.sequence && i.sequence.length > 0);
+      if (instr) return instr.sequence.length;
+    }
+    return 16;
   }
 }
