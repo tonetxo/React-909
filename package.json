@@ -1,7 +1,7 @@
 {
-  "name": "react-tr-909-groovebox",
+  "name": "groovegal",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Unha caixa de ritmos e secuenciador por pasos baseado na web inspirado no TR-909 con liña de baixo e funcionalidade de vocoder.",
   "type": "module",
   "main": "electron.cjs",
@@ -36,7 +36,7 @@
   },
   "build": {
     "appId": "com.example.react-tr-909-groovebox",
-    "productName": "React TR-909 Groovebox",
+    "productName": "GrooveGal",
     "files": [
       "dist/**/*",
       "electron.cjs",
