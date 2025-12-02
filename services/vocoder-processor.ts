@@ -99,13 +99,13 @@ class SimpleOscillator {
                 val = Math.sign(Math.sin(this.phase * 2 * Math.PI));
                 break;
             case 'sawtooth':
-                 val = 2 * (this.phase - Math.floor(this.phase + 0.5));
-                 break;
+                val = 2 * (this.phase - Math.floor(this.phase + 0.5));
+                break;
             case 'triangle':
                 val = 2 * Math.abs(2 * (this.phase - Math.floor(this.phase + 0.5))) - 1;
                 break;
         }
-        
+
         this.phase = (this.phase + phaseIncrement) % 1.0;
         return val;
     }
@@ -115,15 +115,22 @@ class SimpleOscillator {
 // --- Vocoder AudioWorklet Processor ---
 
 class VocoderProcessorNew extends AudioWorkletProcessor {
-    
-    private readonly numBands: number = 40;
+
+    private readonly numBands: number = 20; // Reduced from 40 for better performance
     private modulatorFilters: BandpassFilter[] = [];
     private carrierFilters: BandpassFilter[] = [];
     private lastGainValues: number[] = new Array(this.numBands).fill(0);
 
     private sibilanceFilter: HighpassFilter;
-    
+
     private carrierOsc: SimpleOscillator;
+
+    // Caching for performance optimization
+    private lastQFactor: number = -1;
+    private attackCoeff: number = 0;
+    private releaseCoeff: number = 0;
+    private lastAttack: number = -1;
+    private lastRelease: number = -1;
 
     static get parameterDescriptors() {
         return [
@@ -141,14 +148,14 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
     constructor(options: AudioWorkletNodeOptions) {
         super();
         const sampleRate = options.processorOptions.sampleRate || 44100;
-        
+
         this.carrierOsc = new SimpleOscillator(sampleRate, 'sawtooth', 110);
         this.sibilanceFilter = new HighpassFilter(sampleRate, 4000);
 
         const minFreq = 80;
         const maxFreq = 12000;
         const factor = Math.pow(maxFreq / minFreq, 1 / (this.numBands - 1));
-        
+
         for (let i = 0; i < this.numBands; i++) {
             const freq = minFreq * Math.pow(factor, i);
             const q = 20; // Initial Q
@@ -181,13 +188,23 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
         const carrierFreq = parameters.carrierFreq[0];
 
         this.carrierOsc.frequency = carrierFreq;
-        
-        // Update Q factor for all filters if it has changed
-        // This is a simplification; in a real scenario, you might check if the value actually changed
-        // to avoid recalculating coefficients on every block.
-        this.modulatorFilters.forEach(f => f.updateCoefficients(sampleRate, f.freq, qFactor));
-        this.carrierFilters.forEach(f => f.updateCoefficients(sampleRate, f.freq, qFactor));
 
+        // OPTIMIZATION: Only update Q factor for all filters if it has changed
+        if (qFactor !== this.lastQFactor) {
+            this.modulatorFilters.forEach(f => f.updateCoefficients(sampleRate, f.freq, qFactor));
+            this.carrierFilters.forEach(f => f.updateCoefficients(sampleRate, f.freq, qFactor));
+            this.lastQFactor = qFactor;
+        }
+
+        // OPTIMIZATION: Pre-calculate envelope coefficients when attack/release change
+        if (attack !== this.lastAttack) {
+            this.attackCoeff = 1 - Math.exp(-1 / (sampleRate * attack));
+            this.lastAttack = attack;
+        }
+        if (release !== this.lastRelease) {
+            this.releaseCoeff = 1 - Math.exp(-1 / (sampleRate * release));
+            this.lastRelease = release;
+        }
 
         // --- Per-sample processing loop ---
         for (let i = 0; i < output.length; i++) {
@@ -200,10 +217,8 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
             for (let j = 0; j < this.numBands; j++) {
                 // 1. Analyze modulator for this band
                 const modFiltered = this.modulatorFilters[j].process(modulatorSample);
-                
-                // This is a simplified RMS calculation over a single sample, which is not correct.
-                // A proper implementation would buffer samples and calculate RMS over a window.
-                // However, for a first pass, we will use the absolute value as a proxy for energy.
+
+                // Use absolute value as energy proxy (simplified RMS)
                 let rms = Math.abs(modFiltered);
 
                 // 2. Apply noise gate
@@ -214,19 +229,19 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
 
                 // 3. Calculate gain and apply smoothing (attack/release)
                 const gainValue = Math.min(rms * voiceGain, 1.5);
-                const timeConstant = gainValue > this.lastGainValues[j] ? attack : release;
-                
-                // Simple one-pole smoothing
-                const smoothedGain = this.lastGainValues[j] + (gainValue - this.lastGainValues[j]) * (1 - Math.exp(-1 / (sampleRate * timeConstant)));
+
+                // OPTIMIZATION: Use pre-calculated coefficients instead of Math.exp()
+                const coeff = gainValue > this.lastGainValues[j] ? this.attackCoeff : this.releaseCoeff;
+                const smoothedGain = this.lastGainValues[j] + (gainValue - this.lastGainValues[j]) * coeff;
                 this.lastGainValues[j] = smoothedGain;
 
                 // 4. Synthesize carrier for this band
                 const carrierFiltered = this.carrierFilters[j].process(carrierSample);
-                
+
                 // 5. Apply gain and add to wet signal
                 wetSignal += carrierFiltered * smoothedGain;
             }
-            
+
             // --- Sibilance ("Clarity") path ---
             const sibilanceSignal = this.sibilanceFilter.process(modulatorSample) * sibilance;
 
