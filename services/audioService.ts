@@ -256,10 +256,11 @@ export class AudioEngine {
         const channel = this.channelStrips.get(instrumentId);
         if (!channel) return;
 
-        channel.dry.gain.setValueAtTime(volume, now);
-        channel.reverbSend.gain.setValueAtTime(params.reverbSend ?? 0, now);
-        channel.delaySend.gain.setValueAtTime(params.delaySend ?? 0, now);
-        channel.flangerSend.gain.setValueAtTime(params.flangerSend ?? 0, now);
+        // Use smooth ramps to prevent clicks from parameter changes
+        channel.dry.gain.setTargetAtTime(volume, now, 0.01);
+        channel.reverbSend.gain.setTargetAtTime(params.reverbSend ?? 0, now, 0.01);
+        channel.delaySend.gain.setTargetAtTime(params.delaySend ?? 0, now, 0.01);
+        channel.flangerSend.gain.setTargetAtTime(params.flangerSend ?? 0, now, 0.01);
 
         playInstrument(this.audioContext, now, instrumentId, velocity, params, volume, channel);
     }
@@ -276,10 +277,11 @@ export class AudioEngine {
         const channel = this.channelStrips.get('bassline');
         if (!channel) return;
 
-        channel.dry.gain.setValueAtTime(params.volume, now);
-        channel.reverbSend.gain.setValueAtTime(params.reverbSend, now);
-        channel.delaySend.gain.setValueAtTime(params.delaySend, now);
-        channel.flangerSend.gain.setValueAtTime(params.flangerSend, now);
+        // Use smooth ramps to prevent clicks from parameter changes
+        channel.dry.gain.setTargetAtTime(params.volume, now, 0.01);
+        channel.reverbSend.gain.setTargetAtTime(params.reverbSend, now, 0.01);
+        channel.delaySend.gain.setTargetAtTime(params.delaySend, now, 0.01);
+        channel.flangerSend.gain.setTargetAtTime(params.flangerSend, now, 0.01);
 
         playScheduledBasslineNote(this.audioContext, now, step, prevStep, nextStep, params, channel);
     }
