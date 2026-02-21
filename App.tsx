@@ -329,12 +329,7 @@ const App: React.FC = () => {
 
   const handleInstrumentSelect = useCallback((id: string) => setSelectedInstrumentId(prev => prev === id ? null : id), []);
   const handleMuteToggle = useCallback((id: string) => updateCurrentPattern(p => ({ ...p, instruments: p.instruments.map(i => i.id === id ? { ...i, isMuted: !i.isMuted } : i) })), [updateCurrentPattern]);
-  const handleSoloToggle = useCallback((id: string) => {
-    updateCurrentPattern(p => {
-      const isCurrentlySolo = p.instruments.find(i => i.id === id)?.isSolo;
-      return { ...p, instruments: p.instruments.map(i => ({ ...i, isSolo: i.id === id ? !isCurrentlySolo : false })) };
-    });
-  }, [updateCurrentPattern]);
+  const handleSoloToggle = useCallback((id: string) => updateCurrentPattern(p => ({ ...p, instruments: p.instruments.map(i => i.id === id ? { ...i, isSolo: !i.isSolo } : i) })), [updateCurrentPattern]);
   const handleParamChange = useCallback((id: string, param: keyof InstrumentParams, value: number) => updateCurrentPattern(p => ({ ...p, instruments: p.instruments.map(i => i.id === id ? { ...i, params: { ...i.params, [param]: value } } : i) })), [updateCurrentPattern]);
   const handleVolumeChange = useCallback((id: string, value: number) => updateCurrentPattern(p => ({ ...p, instruments: p.instruments.map(i => i.id === id ? { ...i, volume: value } : i) })), [updateCurrentPattern]);
 

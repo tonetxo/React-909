@@ -535,10 +535,10 @@ export class AudioEngine {
             let currentStepDuration = stepDuration;
             if (this.swing > 0) {
                 const swingAmount = Math.pow(this.swing / 100, 2) * 0.5;
-                if (this.currentStep % 2 !== 0) {
-                    currentStepDuration = stepDuration * (1 + swingAmount);
+                if (this.currentStep % 2 === 0) {
+                    currentStepDuration = stepDuration * (1 + swingAmount); // Lengthen downbeat
                 } else {
-                    currentStepDuration = Math.max(0.001, stepDuration * (1 - swingAmount));
+                    currentStepDuration = Math.max(0.001, stepDuration * (1 - swingAmount)); // Shorten off-beat
                 }
             }
 
