@@ -12,26 +12,29 @@ export const DRUM_VELOCITY_COLORS = [
 ];
 
 export const BASSLINE_VELOCITY_COLORS = [
-    'bg-sky-200/80 border-sky-100',    // 1 (Light Sky Blue)
-    'bg-sky-400/80 border-sky-300',    // 2
-    'bg-sky-600/80 border-sky-500',    // 3
-    'bg-blue-600/80 border-blue-500',  // 4
-    'bg-blue-800/80 border-blue-700',  // 5 (Dark Cobalt Blue)
+  'bg-sky-200/80 border-sky-100',    // 1 (Light Sky Blue)
+  'bg-sky-400/80 border-sky-300',    // 2
+  'bg-sky-600/80 border-sky-500',    // 3
+  'bg-blue-600/80 border-blue-500',  // 4
+  'bg-blue-800/80 border-blue-700',  // 5 (Dark Cobalt Blue)
 ];
 
+export const BASSLINE_MIDI_MIN = 24; // C1
+export const BASSLINE_MIDI_MAX = 47; // B2
+
 export const BASSLINE_NOTES = [
-    { note: 47, name: 'B2', isBlack: false }, { note: 46, name: 'A#2', isBlack: true },
-    { note: 45, name: 'A2', isBlack: false }, { note: 44, name: 'G#2', isBlack: true },
-    { note: 43, name: 'G2', isBlack: false }, { note: 42, name: 'F#2', isBlack: true },
-    { note: 41, name: 'F2', isBlack: false }, { note: 40, name: 'E2', isBlack: false },
-    { note: 39, name: 'D#2', isBlack: true }, { note: 38, name: 'D2', isBlack: false },
-    { note: 37, name: 'C#2', isBlack: true }, { note: 36, name: 'C2', isBlack: false },
-    { note: 35, name: 'B1', isBlack: false }, { note: 34, name: 'A#1', isBlack: true },
-    { note: 33, name: 'A1', isBlack: false }, { note: 32, name: 'G#1', isBlack: true },
-    { note: 31, name: 'G1', isBlack: false }, { note: 30, name: 'F#1', isBlack: true },
-    { note: 29, name: 'F1', isBlack: false }, { note: 28, name: 'E1', isBlack: false },
-    { note: 27, name: 'D#1', isBlack: true }, { note: 26, name: 'D1', isBlack: false },
-    { note: 25, name: 'C#1', isBlack: true }, { note: 24, name: 'C1', isBlack: false },
+  { note: 47, name: 'B2', isBlack: false }, { note: 46, name: 'A#2', isBlack: true },
+  { note: 45, name: 'A2', isBlack: false }, { note: 44, name: 'G#2', isBlack: true },
+  { note: 43, name: 'G2', isBlack: false }, { note: 42, name: 'F#2', isBlack: true },
+  { note: 41, name: 'F2', isBlack: false }, { note: 40, name: 'E2', isBlack: false },
+  { note: 39, name: 'D#2', isBlack: true }, { note: 38, name: 'D2', isBlack: false },
+  { note: 37, name: 'C#2', isBlack: true }, { note: 36, name: 'C2', isBlack: false },
+  { note: 35, name: 'B1', isBlack: false }, { note: 34, name: 'A#1', isBlack: true },
+  { note: 33, name: 'A1', isBlack: false }, { note: 32, name: 'G#1', isBlack: true },
+  { note: 31, name: 'G1', isBlack: false }, { note: 30, name: 'F#1', isBlack: true },
+  { note: 29, name: 'F1', isBlack: false }, { note: 28, name: 'E1', isBlack: false },
+  { note: 27, name: 'D#1', isBlack: true }, { note: 26, name: 'D1', isBlack: false },
+  { note: 25, name: 'C#1', isBlack: true }, { note: 24, name: 'C1', isBlack: false },
 ];
 
 export const VOLUME_PARAM_DEFINITION: ParamDefinition = {
@@ -122,18 +125,18 @@ export const getInitialInstruments = (steps: number): Instrument[] => [
     isMuted: false,
     isSolo: false,
     params: {
-        pitch: 100,
-        decay: 0.4,
-        reverbSend: 0,
-        delaySend: 0,
-        flangerSend: 0,
+      pitch: 100,
+      decay: 0.4,
+      reverbSend: 0,
+      delaySend: 0,
+      flangerSend: 0,
     },
     paramDefinitions: {
-        pitch: { label: 'Pitch', min: 60, max: 150, step: 1 },
-        decay: { label: 'Decay', min: 0.1, max: 0.8, step: 0.01 },
-        reverbSend: { label: 'Reverb', min: 0, max: 1, step: 0.01 },
-        delaySend: { label: 'Delay', min: 0, max: 1, step: 0.01 },
-        flangerSend: { label: 'Flanger', min: 0, max: 1, step: 0.01 },
+      pitch: { label: 'Pitch', min: 60, max: 150, step: 1 },
+      decay: { label: 'Decay', min: 0.1, max: 0.8, step: 0.01 },
+      reverbSend: { label: 'Reverb', min: 0, max: 1, step: 0.01 },
+      delaySend: { label: 'Delay', min: 0, max: 1, step: 0.01 },
+      flangerSend: { label: 'Flanger', min: 0, max: 1, step: 0.01 },
     }
   },
   {
@@ -144,18 +147,18 @@ export const getInitialInstruments = (steps: number): Instrument[] => [
     isMuted: false,
     isSolo: false,
     params: {
-        pitch: 150,
-        decay: 0.3,
-        reverbSend: 0,
-        delaySend: 0,
-        flangerSend: 0,
+      pitch: 150,
+      decay: 0.3,
+      reverbSend: 0,
+      delaySend: 0,
+      flangerSend: 0,
     },
     paramDefinitions: {
-        pitch: { label: 'Pitch', min: 100, max: 250, step: 1 },
-        decay: { label: 'Decay', min: 0.1, max: 0.6, step: 0.01 },
-        reverbSend: { label: 'Reverb', min: 0, max: 1, step: 0.01 },
-        delaySend: { label: 'Delay', min: 0, max: 1, step: 0.01 },
-        flangerSend: { label: 'Flanger', min: 0, max: 1, step: 0.01 },
+      pitch: { label: 'Pitch', min: 100, max: 250, step: 1 },
+      decay: { label: 'Decay', min: 0.1, max: 0.6, step: 0.01 },
+      reverbSend: { label: 'Reverb', min: 0, max: 1, step: 0.01 },
+      delaySend: { label: 'Delay', min: 0, max: 1, step: 0.01 },
+      flangerSend: { label: 'Flanger', min: 0, max: 1, step: 0.01 },
     }
   },
   {
@@ -166,18 +169,18 @@ export const getInitialInstruments = (steps: number): Instrument[] => [
     isMuted: false,
     isSolo: false,
     params: {
-        pitch: 220,
-        decay: 0.25,
-        reverbSend: 0,
-        delaySend: 0,
-        flangerSend: 0,
+      pitch: 220,
+      decay: 0.25,
+      reverbSend: 0,
+      delaySend: 0,
+      flangerSend: 0,
     },
     paramDefinitions: {
-        pitch: { label: 'Pitch', min: 150, max: 350, step: 1 },
-        decay: { label: 'Decay', min: 0.1, max: 0.5, step: 0.01 },
-        reverbSend: { label: 'Reverb', min: 0, max: 1, step: 0.01 },
-        delaySend: { label: 'Delay', min: 0, max: 1, step: 0.01 },
-        flangerSend: { label: 'Flanger', min: 0, max: 1, step: 0.01 },
+      pitch: { label: 'Pitch', min: 150, max: 350, step: 1 },
+      decay: { label: 'Decay', min: 0.1, max: 0.5, step: 0.01 },
+      reverbSend: { label: 'Reverb', min: 0, max: 1, step: 0.01 },
+      delaySend: { label: 'Delay', min: 0, max: 1, step: 0.01 },
+      flangerSend: { label: 'Flanger', min: 0, max: 1, step: 0.01 },
     }
   },
   {
@@ -230,26 +233,27 @@ export const getInitialInstruments = (steps: number): Instrument[] => [
 ];
 
 export const getInitialBasslinePattern = (steps: number): BasslinePattern => ({
-    sequence: Array(steps).fill(0).map(() => ({ note: null, velocity: 0, slide: false, tie: false })),
-    params: {
-        waveform: 'sawtooth',
-        cutoff: 800,
-        resonance: 5,
-        envelopeAmount: 2000,
-        decay: 0.3,
-        accent: 0.5,
-        volume: 0.25,
-        reverbSend: 0,
-        delaySend: 0,
-        flangerSend: 0,
-    }
+  sequence: Array(steps).fill(0).map(() => ({ note: null, velocity: 0, slide: false, tie: false })),
+  params: {
+    enabled: true,
+    waveform: 'sawtooth',
+    cutoff: 800,
+    resonance: 5,
+    envelopeAmount: 2000,
+    decay: 0.3,
+    accent: 0.5,
+    volume: 0.25,
+    reverbSend: 0,
+    delaySend: 0,
+    flangerSend: 0,
+  }
 });
 
 export const INITIAL_VOCODER_PARAMS: VocoderParams = {
-    enabled: false,
-    carrier: 'drums',
-    mix: 0.5,
-    bands: 16,
-    formantShift: 0,
-    synthPitch: 48, // C3
+  enabled: false,
+  carrier: 'drums',
+  mix: 0.5,
+  bands: 16,
+  formantShift: 0,
+  synthPitch: 48, // C3
 };

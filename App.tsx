@@ -15,6 +15,9 @@ const PROJECT_STORAGE_KEY = 'gemini-groove-project';
 const NUM_PATTERNS = 4;
 const SONG_STEPS = 16;
 
+const stepsFromTimeSig = (ts: TimeSignature): number =>
+  ts[1] === 8 ? ts[0] * 2 : ts[0] * 4;
+
 const mergeInstrumentData = (loadedInstruments: Instrument[], steps: number): Instrument[] => {
   // Start with a fresh deep copy of the default instruments.
   const newInstruments = JSON.parse(JSON.stringify(getInitialInstruments(steps)));
@@ -67,7 +70,7 @@ const mergePatternData = (loadedPattern: Pattern | null, timeSignature: TimeSign
     note: step.note,
     velocity: step.velocity ?? (step.accent ? 3 : 0),
     slide: step.slide ?? false,
-    tie: step.tie ?? false, // Add this line
+    tie: step.tie ?? false,
   }));
 
 
@@ -138,7 +141,6 @@ const App: React.FC = () => {
         song: { sequence: songSeqToSave, isLooping: isLoopingToSave },
       };
       localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projectData));
-      console.log("Project saved to localStorage.");
     } catch (error) {
       console.error("Failed to save project to localStorage:", error);
     }
@@ -152,7 +154,7 @@ const App: React.FC = () => {
         if (parsedProject.patterns && parsedProject.song) {
           const mergedPatterns = parsedProject.patterns.map(p => {
             const ts = p?.timeSignature || [4, 4];
-            const steps = ts[1] === 8 ? ts[0] * 2 : ts[0] * 4;
+            const steps = stepsFromTimeSig(ts);
             return mergePatternData(p, ts, steps);
           });
           setPatterns(mergedPatterns);
@@ -336,38 +338,30 @@ const App: React.FC = () => {
   const handleParamChange = useCallback((id: string, param: keyof InstrumentParams, value: number) => updateCurrentPattern(p => ({ ...p, instruments: p.instruments.map(i => i.id === id ? { ...i, params: { ...i.params, [param]: value } } : i) })), [updateCurrentPattern]);
   const handleVolumeChange = useCallback((id: string, value: number) => updateCurrentPattern(p => ({ ...p, instruments: p.instruments.map(i => i.id === id ? { ...i, volume: value } : i) })), [updateCurrentPattern]);
 
-  const handleCopyInstrument = useCallback((instrumentId: string) => {
-    const instrument = activePattern.instruments.find(inst => inst.id === instrumentId);
-    if (instrument) {
-      setInstrumentClipboard(instrument.sequence);
-    }
-  }, [activePattern]);
-
-  const handlePasteInstrument = useCallback((instrumentId: string) => {
-    if (instrumentClipboard) {
-      updateCurrentPattern(p => {
-        const newInstruments = p.instruments.map(inst => {
-          if (inst.id === instrumentId) {
-            return { ...inst, sequence: [...instrumentClipboard] };
-          }
-          return inst;
-        });
-        return { ...p, instruments: newInstruments };
-      });
-    }
-  }, [instrumentClipboard, updateCurrentPattern]);
-
-  const handleClearInstrument = useCallback((instrumentId: string) => {
-    updateCurrentPattern(p => {
-      const newInstruments = p.instruments.map(inst => {
-        if (inst.id === instrumentId) {
-          return { ...inst, sequence: Array(inst.sequence.length).fill(0) as Velocity[] };
+  const handleInstrumentAction = useCallback((id: string, action: 'copy' | 'paste' | 'clear') => {
+    switch (action) {
+      case 'copy':
+        const instrument = activePattern.instruments.find(inst => inst.id === id);
+        if (instrument) {
+          setInstrumentClipboard(instrument.sequence);
         }
-        return inst;
-      });
-      return { ...p, instruments: newInstruments };
-    });
-  }, [updateCurrentPattern]);
+        break;
+      case 'paste':
+        if (instrumentClipboard) {
+          updateCurrentPattern(p => ({
+            ...p,
+            instruments: p.instruments.map(inst => inst.id === id ? { ...inst, sequence: [...instrumentClipboard] } : inst)
+          }));
+        }
+        break;
+      case 'clear':
+        updateCurrentPattern(p => ({
+          ...p,
+          instruments: p.instruments.map(inst => inst.id === id ? { ...inst, sequence: Array(inst.sequence.length).fill(0) as Velocity[] } : inst)
+        }));
+        break;
+    }
+  }, [activePattern, instrumentClipboard, updateCurrentPattern]);
 
   const handleSavePattern = useCallback(() => {
     // The pattern is now updated in real-time, so we just need to save the project.
@@ -410,7 +404,7 @@ const App: React.FC = () => {
         if (!projectData.patterns || !projectData.song) throw new Error("Invalid project file");
 
         const looping = projectData.song.isLooping ?? false;
-        const mergedPatterns = projectData.patterns.map(p => mergePatternData(p, p?.timeSignature || [4, 4], p?.timeSignature ? (p.timeSignature[1] === 8 ? p.timeSignature[0] * 2 : p.timeSignature[0] * 4) : 16));
+        const mergedPatterns = projectData.patterns.map(p => mergePatternData(p, p?.timeSignature || [4, 4], stepsFromTimeSig(p?.timeSignature || [4, 4])));
         setPatterns(mergedPatterns);
         setSongSequence(projectData.song.sequence);
         setIsSongLooping(looping);
@@ -479,7 +473,7 @@ const App: React.FC = () => {
   }, [sequencerEngine, setSelectedMidiOutput]);
 
   // --- Bassline Handlers ---
-  const handleBasslineParamChange = useCallback((param: keyof BasslineParams, value: number | Waveform) => {
+  const handleBasslineParamChange = useCallback((param: keyof BasslineParams, value: number | Waveform | boolean) => {
     updateCurrentPattern(p => ({ ...p, bassline: { ...p.bassline!, params: { ...p.bassline!.params, [param]: value } } }));
   }, [updateCurrentPattern]);
 
@@ -546,7 +540,7 @@ const App: React.FC = () => {
 
           {isLoaded && (
             <>
-              <Sequencer instruments={instruments} currentStep={currentStep} selectedInstrumentId={selectedInstrumentId} timeSignature={timeSignature} onStepClick={handleStepClick} onStepClear={handleClearStep} onInstrumentSelect={handleInstrumentSelect} onMuteToggle={handleMuteToggle} onSoloToggle={handleSoloToggle} onParamChange={handleParamChange} onVolumeChange={handleVolumeChange} onCopyInstrument={handleCopyInstrument} onPasteInstrument={handlePasteInstrument} onClearInstrument={handleClearInstrument} isInstrumentPasteDisabled={instrumentClipboard === null} />
+              <Sequencer instruments={instruments} currentStep={currentStep} selectedInstrumentId={selectedInstrumentId} timeSignature={timeSignature} onStepClick={handleStepClick} onStepClear={handleClearStep} onInstrumentSelect={handleInstrumentSelect} onMuteToggle={handleMuteToggle} onSoloToggle={handleSoloToggle} onParamChange={handleParamChange} onVolumeChange={handleVolumeChange} onInstrumentAction={handleInstrumentAction} isInstrumentPasteDisabled={instrumentClipboard === null} />
               <BasslineSequencer basslinePattern={basslinePattern} currentStep={currentStep} timeSignature={timeSignature} onNoteClick={handleBasslineNoteClick} onStepClear={handleClearBasslineStep} onParamChange={handleBasslineParamChange} onControlToggle={handleBasslineControlToggle} />
               <VocoderControls
                 params={vocoderParams}

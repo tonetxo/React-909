@@ -48,6 +48,7 @@ export interface BasslineStep {
 }
 
 export interface BasslineParams {
+  enabled: boolean;
   waveform: Waveform;
   cutoff: number;
   resonance: number;

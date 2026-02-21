@@ -1,5 +1,5 @@
 import { Velocity, InstrumentParams, BasslineStep, BasslineParams, VocoderParams, VocoderCarrier, VocoderType, Instrument, BasslinePattern } from '../types';
-import { playInstrument, playScheduledBasslineNote, stopBassline } from './synthesis';
+import { playInstrument, BasslineSynth } from './synthesis';
 import { MidiService } from './MidiService';
 
 type StepCallback = (step: number) => void;
@@ -33,10 +33,9 @@ export class AudioEngine {
 
     // --- Vocoder ---
     private vocoderWorkletNode: AudioWorkletNode | null = null;
-    private currentVocoderType: VocoderType = 'original';
     private carrierInput: GainNode | null = null;
-    private currentCarrierType: VocoderCarrier | null = null;
     private vocoderEnabled = false;
+    private basslineSynth: BasslineSynth;
 
     private micStream: MediaStream | null = null;
     private micSource: MediaStreamAudioSourceNode | null = null;
@@ -79,6 +78,7 @@ export class AudioEngine {
 
     constructor() {
         this.midiService = new MidiService();
+        this.basslineSynth = new BasslineSynth();
     }
 
     public getAudioContext(): AudioContext | null {
@@ -116,7 +116,7 @@ export class AudioEngine {
         if (this.isInitialized) return;
         if (this.initializationPromise) return this.initializationPromise;
 
-        this.initializationPromise = new Promise(async (resolve) => {
+        this.initializationPromise = (async () => {
             this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
                 latencyHint: 'interactive',
             });
@@ -153,15 +153,15 @@ export class AudioEngine {
             }
 
             await this.initVocoderWorklets();
-            await this.initClock();
+            await this.resumeAudioContext();
 
             this.isInitialized = true;
-            resolve();
-        });
+        })();
+
         return this.initializationPromise;
     };
 
-    private async initClock() {
+    private async resumeAudioContext() {
         if (this.audioContext) {
             if (this.audioContext.state === 'suspended') {
                 await this.audioContext.resume();
@@ -189,8 +189,7 @@ export class AudioEngine {
     }
 
     public setVocoderType(type: VocoderType) {
-        if (type === this.currentVocoderType) return;
-        this.currentVocoderType = type;
+        // Placeholder for future logic if multiple worklets are used
     }
 
     private setupEffects = async () => {
@@ -283,12 +282,17 @@ export class AudioEngine {
         channel.delaySend.gain.setTargetAtTime(params.delaySend, now, 0.01);
         channel.flangerSend.gain.setTargetAtTime(params.flangerSend, now, 0.01);
 
-        playScheduledBasslineNote(this.audioContext, now, step, prevStep, nextStep, params, channel);
+        if (params.enabled === false) {
+            this.basslineSynth.stop(this.audioContext);
+            return;
+        }
+
+        this.basslineSynth.playNote(this.audioContext, now, step, prevStep, nextStep, params, channel);
     }
 
     public stopAllSounds() {
         if (!this.isInitialized || !this.audioContext) return;
-        stopBassline(this.audioContext);
+        this.basslineSynth.stop(this.audioContext);
     }
 
     public toggleVocoder = async (enabled: boolean) => {

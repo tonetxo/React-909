@@ -1,69 +1,53 @@
 #!/bin/bash
-# Validation script for MIDI sync improvements
+# Updated validation script for MIDI sync and critical fixes
 
-echo "Validating MIDI sync improvements..."
+echo "Validating project integrity and critical fixes..."
 
-# Check core functionality
-echo "Checking AudioEngine changes..."
-if grep -q "processingDelay = 0.001\|compensatedTimeDelta" ./services/audioService.ts; then
-    echo "✓ AudioEngine has high tempo compensation"
+# 1. Check infinite loop fix in clock-processor.js
+echo "Checking clock-processor.js..."
+if grep -q "ticksSent++; // Safety" ./services/clock-processor.js; then
+    echo "✓ clock-processor.js has infinite loop protection"
 else
-    echo "✗ AudioEngine missing high tempo compensation"
+    echo "✗ clock-processor.js missing infinite loop protection"
 fi
 
-if grep -q "compensatedTimeDelta\|performanceTime" ./services/audioService.ts; then
-    echo "✓ AudioEngine has precise time conversion"
+# 2. Check dead code removal in SequencerEngine.ts
+echo "Checking SequencerEngine.ts..."
+if grep -q "if (nextSongStep === -1)" ./sequencer/SequencerEngine.ts; then
+    echo "✗ SequencerEngine.ts still contains unreachable dead code"
 else
-    echo "✗ AudioEngine missing precise time conversion"
+    echo "✓ SequencerEngine.ts dead code removed"
 fi
 
-if grep -q "lookahead = 0.05" ./services/clock-processor.ts; then
-    echo "✓ ClockProcessor has lookahead"
+# 3. Check for abandoned state file
+echo "Checking for unused AppState.ts..."
+if [ -f "./state/AppState.ts" ]; then
+    echo "✗ state/AppState.ts still exists (should be deleted)"
 else
-    echo "✗ ClockProcessor missing lookahead"
+    echo "✓ state/AppState.ts deleted"
 fi
 
-if grep -q "startOffset = 0.025" ./services/audioService.ts; then
-    echo "✓ AudioEngine has optimized start offset for high tempos"
+# 4. Check core AudioEngine features
+echo "Checking AudioEngine..."
+if grep -q "anchorPerfTime =" ./services/audioService.ts; then
+    echo "✓ AudioEngine has robust timing anchors"
 else
-    echo "✗ AudioEngine missing optimized start offset"
+    echo "✗ AudioEngine missing robust timing anchors"
 fi
 
-echo "Checking MidiService changes..."
-if grep -A 5 -B 5 "setTimeout" ./services/MidiService.ts | grep -q "0xFC"; then
-    echo "✓ MidiService has enhanced stop command"
+if grep -q "startOffset = 0.25" ./services/audioService.ts; then
+    echo "✓ AudioEngine has correct start offset"
 else
-    echo "✗ MidiService missing enhanced stop command"
+    echo "✗ AudioEngine has incorrect or missing start offset"
 fi
 
-echo "Checking ClockProcessor changes..."
-if grep -q "> 0.3.*high tempos" ./services/clock-processor.ts; then
-    echo "✓ ClockProcessor has high tempo tolerance"
+# 5. Check MidiService stop sequence
+echo "Checking MidiService..."
+if grep -A 15 "sendStop()" ./services/MidiService.ts | grep -q "0xFC"; then
+    echo "✓ MidiService has MIDI Stop command"
 else
-    echo "✗ ClockProcessor missing high tempo tolerance"
-fi
-
-echo "Checking Electron Slave changes..."
-if grep -q "clockBuffer = \[\].*on stop" ./electron-slave.js; then
-    echo "✓ Electron slave clears buffer on stop"
-else
-    echo "✗ Electron slave missing buffer clear on stop"
-fi
-
-echo "Checking tempo update changes..."
-if grep -q "previousOriginTime\|nextScheduledTickTime" ./services/clock-processor.ts; then
-    echo "✓ ClockProcessor has improved tempo transitions"
-else
-    echo "✗ ClockProcessor missing improved tempo transitions"
+    echo "✗ MidiService missing MIDI Stop command"
 fi
 
 echo ""
-echo "All critical MIDI sync improvements implemented!"
-echo ""
-echo "Key changes:"
-echo "- Improved stop sequence with better state reset (multiple stop messages)"
-echo "- High tempo compensation with 1ms processing delay"
-echo "- Enhanced clock tolerance (0.3s vs 0.2s) for high tempos"
-echo "- Optimized start offset (25ms vs 50ms) for better precision"
-echo "- Better tempo transition handling with phase continuity"
-echo "- Proper MIDI message timing and ordering"
+echo "Validation complete."

@@ -10,10 +10,147 @@ const midiToFreq = (midi: number) => {
     return Math.pow(2, (midi - 69) / 12) * 440;
 };
 
-// Keep track of the bassline synth parts to implement slide
-let basslineOsc: OscillatorNode | null = null;
-let basslineVcf: BiquadFilterNode | null = null;
-let basslineVca: GainNode | null = null;
+export class BasslineSynth {
+    private osc: OscillatorNode | null = null;
+    private vcf: BiquadFilterNode | null = null;
+    private vca: GainNode | null = null;
+    private lastNoteTime = 0;
+
+    public playNote(
+        context: AudioContext,
+        time: number,
+        step: BasslineStep,
+        prevStep: BasslineStep | null,
+        nextStep: BasslineStep | null,
+        params: BasslineParams,
+        channel: SynthesisChannelStrip
+    ) {
+        // Prevent duplicate scheduling for the exact same time (debounce)
+        if (Math.abs(time - this.lastNoteTime) < 0.001) {
+            return;
+        }
+        this.lastNoteTime = time;
+
+        const freq = step.note ? midiToFreq(step.note) : 0;
+        const velocityGain = 0.5 + (step.velocity / 5) * 0.5;
+        const isAccent = step.velocity > 3;
+
+        const effectiveCutoff = params.cutoff + (isAccent ? params.accent * 2500 : 0);
+        const effectiveResonance = params.resonance + (isAccent ? params.accent * 8 : 0);
+        const effectiveEnvMod = params.envelopeAmount + (isAccent ? params.accent * 2000 : 0);
+        const effectiveVolume = velocityGain + (isAccent ? params.accent * 0.4 : 0);
+
+        // --- Note Termination Logic ---
+        if (!step || step.note === null || step.velocity === 0) {
+            if (prevStep && !prevStep.tie && this.osc && this.vca) {
+                const currentGain = this.vca.gain.value;
+                this.vca.gain.cancelScheduledValues(time);
+                this.vca.gain.setValueAtTime(currentGain, time);
+                this.vca.gain.setTargetAtTime(0, time, 0.005);
+                this.osc.stop(time + 0.03);
+            }
+            return;
+        }
+
+        // --- Note Continuation / Slide Logic ---
+        if (this.osc && this.vca && prevStep && prevStep.note !== null && (step.slide || prevStep.tie)) {
+            this.osc.frequency.setTargetAtTime(freq, time, step.slide ? 0.015 : 0.001);
+
+            if (this.vcf) {
+                this.vcf.frequency.setTargetAtTime(effectiveCutoff, time, 0.01);
+                this.vcf.Q.setTargetAtTime(effectiveResonance, time, 0.01);
+            }
+
+            this.vca.gain.cancelScheduledValues(time);
+            this.vca.gain.setTargetAtTime(effectiveVolume, time, 0.001);
+
+            if (!step.tie) {
+                this.vca.gain.setTargetAtTime(0, time + params.decay, 0.02);
+                if (this.osc) {
+                    this.osc.stop(time + params.decay + 0.1);
+                }
+            }
+            return;
+        }
+
+        // --- New Note Logic ---
+        if (this.osc && this.vca) {
+            const currentGain = this.vca.gain.value;
+            this.vca.gain.cancelScheduledValues(time);
+            this.vca.gain.setValueAtTime(currentGain, time);
+            this.vca.gain.setTargetAtTime(0, time, 0.005);
+            this.osc.stop(time + 0.02);
+            // Properly disconnect old nodes
+            const oldOsc = this.osc;
+            const oldVca = this.vca;
+            const oldVcf = this.vcf;
+            setTimeout(() => {
+                oldOsc.disconnect();
+                if (oldVcf) oldVcf.disconnect();
+                oldVca.disconnect();
+            }, (time - context.currentTime + 0.1) * 1000);
+        }
+
+        this.osc = context.createOscillator();
+        this.vcf = context.createBiquadFilter();
+        this.vca = context.createGain();
+
+        this.osc.connect(this.vcf);
+        this.vcf.connect(this.vca);
+        this.vca.connect(channel.input);
+
+        this.osc.type = params.waveform;
+        this.osc.frequency.value = freq;
+
+        this.vcf.type = 'lowpass';
+        this.vcf.frequency.setValueAtTime(effectiveCutoff, time);
+        this.vcf.Q.value = effectiveResonance;
+
+        this.vcf.frequency.setTargetAtTime(effectiveCutoff + effectiveEnvMod, time, 0.001);
+        this.vcf.frequency.setTargetAtTime(effectiveCutoff, time + 0.01, params.decay / 3);
+
+        this.vca.gain.setValueAtTime(0, time);
+        this.vca.gain.setTargetAtTime(effectiveVolume, time, 0.005);
+
+        const isNextStepSlide = nextStep && nextStep.slide;
+
+        if (!step.tie && !isNextStepSlide) {
+            this.vca.gain.setTargetAtTime(0, time + params.decay, 0.02);
+        }
+
+        this.osc.start(time);
+
+        if (!step.tie && !isNextStepSlide) {
+            this.osc.stop(time + params.decay + 0.1);
+        }
+    }
+
+    public stop(context: AudioContext) {
+        const now = context.currentTime;
+        if (this.vca) {
+            this.vca.gain.cancelScheduledValues(now);
+            this.vca.gain.setTargetAtTime(0, now, 0.01);
+        }
+        if (this.osc) {
+            try {
+                this.osc.stop(now + 0.02);
+            } catch (e) { }
+        }
+        // Disconnect after stopping
+        const osc = this.osc;
+        const vca = this.vca;
+        const vcf = this.vcf;
+        setTimeout(() => {
+            if (osc) osc.disconnect();
+            if (vcf) vcf.disconnect();
+            if (vca) vca.disconnect();
+        }, 100);
+
+        this.osc = null;
+        this.vca = null;
+        this.vcf = null;
+    }
+}
 
 export const playInstrument = (
     context: AudioContext,
@@ -50,7 +187,8 @@ export const playInstrument = (
             gain.gain.exponentialRampToValueAtTime(0.001, time + decay);
 
             osc.start(time);
-            osc.stop(time + decay + 0.02); // Anti-click: margin after fade
+            osc.stop(time + decay + 0.02);
+            setTimeout(() => { osc.disconnect(); gain.disconnect(); }, (time - context.currentTime + decay + 0.1) * 1000);
             break;
         }
 
@@ -78,7 +216,7 @@ export const playInstrument = (
             noiseGain.gain.exponentialRampToValueAtTime(0.001, time + decay);
 
             noise.start(time);
-            noise.stop(time + decay + 0.02); // Anti-click: margin after fade
+            noise.stop(time + decay + 0.02);
 
             const osc = context.createOscillator();
             const oscGain = context.createGain();
@@ -92,7 +230,11 @@ export const playInstrument = (
             oscGain.gain.exponentialRampToValueAtTime(0.001, time + decay * 0.8);
 
             osc.start(time);
-            osc.stop(time + decay + 0.02); // Anti-click: margin after fade
+            osc.stop(time + decay + 0.02);
+            setTimeout(() => {
+                noise.disconnect(); noiseFilter.disconnect(); noiseGain.disconnect();
+                osc.disconnect(); oscGain.disconnect();
+            }, (time - context.currentTime + decay + 0.1) * 1000);
             break;
         }
 
@@ -116,7 +258,8 @@ export const playInstrument = (
                 gain.gain.exponentialRampToValueAtTime(0.001, startTime + decay);
 
                 noise.start(startTime);
-                noise.stop(startTime + decay + 0.02); // Anti-click: margin after fade
+                noise.stop(startTime + decay + 0.02);
+                setTimeout(() => { noise.disconnect(); gain.disconnect(); }, (startTime - context.currentTime + decay + 0.1) * 1000);
             }
             break;
         }
@@ -139,175 +282,53 @@ export const playInstrument = (
             gain.gain.exponentialRampToValueAtTime(0.001, time + decay);
 
             osc.start(time);
-            osc.stop(time + decay + 0.02); // Anti-click: margin after fade
+            osc.stop(time + decay + 0.02);
+            setTimeout(() => { osc.disconnect(); gain.disconnect(); }, (time - context.currentTime + decay + 0.1) * 1000);
             break;
         }
 
         case 'hihat':
         case 'openhat': {
             const ratios = [2, 3, 4.16, 5.43, 6.79, 8.21];
+
+            const bandpass = context.createBiquadFilter();
+            bandpass.type = 'bandpass';
+            bandpass.frequency.value = 10000;
+
+            const highpass = context.createBiquadFilter();
+            highpass.type = 'highpass';
+            highpass.frequency.value = 7000;
+
             const gain = context.createGain();
+
+            bandpass.connect(highpass);
+            highpass.connect(gain);
             gain.connect(channel.input);
+
+            const baseDecay = instrumentId === 'hihat' ? 0.05 : 0.25;
+            const decay = (params.decay ?? 0.5) * baseDecay * 4;
 
             ratios.forEach(ratio => {
                 const osc = context.createOscillator();
                 osc.type = 'square';
                 osc.frequency.value = (params.pitch ?? 300) * ratio * (params.metal ?? 0.5);
-                osc.connect(gain);
+                osc.connect(bandpass);
                 osc.start(time);
-                osc.stop(time + (params.decay ?? 0.1) + 0.02); // Anti-click: margin after fade
+                osc.stop(time + decay + 0.02);
+                setTimeout(() => { osc.disconnect(); }, (time - context.currentTime + decay + 0.1) * 1000);
             });
 
-            const decay = params.decay ?? 0.1;
-            gain.gain.setValueAtTime(effectiveVolume * 0.1, time);
-            gain.gain.exponentialRampToValueAtTime(0.001, time + decay);
+            const peakVolume = instrumentId === 'hihat' ? effectiveVolume * 3.5 : effectiveVolume * 2.0;
+            gain.gain.setValueAtTime(0.001, time);
+            gain.gain.linearRampToValueAtTime(peakVolume, time + 0.005);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.005 + decay);
+
+            setTimeout(() => {
+                bandpass.disconnect();
+                highpass.disconnect();
+                gain.disconnect();
+            }, (time - context.currentTime + decay + 0.1) * 1000);
             break;
         }
     }
-};
-
-let lastBasslineTime = 0;
-
-export const playScheduledBasslineNote = (
-    context: AudioContext,
-    time: number,
-    step: BasslineStep,
-    prevStep: BasslineStep | null, // Allow prevStep to be null for the first note
-    nextStep: BasslineStep | null, // Allow nextStep to be null for the last note
-    params: BasslineParams,
-    channel: SynthesisChannelStrip
-) => {
-    // Prevent duplicate scheduling for the exact same time (debounce)
-    if (Math.abs(time - lastBasslineTime) < 0.001) {
-        return;
-    }
-    lastBasslineTime = time;
-
-    const freq = step.note ? midiToFreq(step.note) : 0;
-    const velocityGain = 0.5 + (step.velocity / 5) * 0.5;
-    const isAccent = step.velocity > 3;
-
-    const effectiveCutoff = params.cutoff + (isAccent ? params.accent * 2500 : 0);
-    const effectiveResonance = params.resonance + (isAccent ? params.accent * 8 : 0);
-    const effectiveEnvMod = params.envelopeAmount + (isAccent ? params.accent * 2000 : 0);
-    const effectiveVolume = velocityGain + (isAccent ? params.accent * 0.4 : 0);
-
-    // --- Note Termination Logic ---
-    // If the current step is empty or has no velocity, we might need to stop the previous note.
-    if (!step || step.note === null || step.velocity === 0) {
-        // Only stop the note if the *previous* step was NOT a tie.
-        // If it was a tie, the note should continue playing until its own decay ends.
-        if (prevStep && !prevStep.tie && basslineOsc && basslineVca) {
-            // Anti-click: capture current gain before canceling automation
-            const currentGain = basslineVca.gain.value;
-            basslineVca.gain.cancelScheduledValues(time);
-            basslineVca.gain.setValueAtTime(currentGain, time);
-            basslineVca.gain.setTargetAtTime(0, time, 0.005);
-            basslineOsc.stop(time + 0.03);
-        }
-        return;
-    }
-
-    // --- Note Continuation / Slide Logic ---
-    // If a previous note is playing AND the new step is a slide OR the previous step was a tie.
-    if (basslineOsc && basslineVca && prevStep && prevStep.note !== null && (step.slide || prevStep.tie)) {
-        // Slide: Glide pitch to the new note.
-        basslineOsc.frequency.setTargetAtTime(freq, time, step.slide ? 0.015 : 0.001);
-
-        // Update filter and resonance immediately.
-        if (basslineVcf) {
-            basslineVcf.frequency.setTargetAtTime(effectiveCutoff, time, 0.01);
-            basslineVcf.Q.setTargetAtTime(effectiveResonance, time, 0.01);
-        }
-
-        // Cancel any previously scheduled gain changes to take over.
-        basslineVca.gain.cancelScheduledValues(time);
-
-        // Set the volume to the new step's effective volume.
-        basslineVca.gain.setTargetAtTime(effectiveVolume, time, 0.001);
-
-        // If the current step is NOT a tie, it means this is the end of a tied/slid phrase.
-        // Schedule the note to decay and stop.
-        if (!step.tie) {
-            basslineVca.gain.setTargetAtTime(0, time + params.decay, 0.02);
-            if (basslineOsc) {
-                basslineOsc.stop(time + params.decay + 0.1);
-            }
-        }
-
-        return; // Note was continued, so we are done.
-    }
-
-    // --- New Note Logic ---
-    // If we reached here, it means we need to start a fresh note.
-    // First, stop any previously playing note.
-    if (basslineOsc && basslineVca) {
-        // Anti-click: capture current gain before canceling automation
-        const currentGain = basslineVca.gain.value;
-        basslineVca.gain.cancelScheduledValues(time);
-        basslineVca.gain.setValueAtTime(currentGain, time);
-        basslineVca.gain.setTargetAtTime(0, time, 0.005);
-        basslineOsc.stop(time + 0.02);
-    }
-
-    // Create new audio nodes.
-    const osc = context.createOscillator();
-    const vcf = context.createBiquadFilter();
-    const vca = context.createGain();
-
-    osc.connect(vcf);
-    vcf.connect(vca);
-    vca.connect(channel.input);
-
-    osc.type = params.waveform;
-    osc.frequency.value = freq;
-
-    vcf.type = 'lowpass';
-    vcf.frequency.setValueAtTime(effectiveCutoff, time);
-    vcf.Q.value = effectiveResonance;
-
-    // VCF Envelope
-    vcf.frequency.setTargetAtTime(effectiveCutoff + effectiveEnvMod, time, 0.001);
-    vcf.frequency.setTargetAtTime(effectiveCutoff, time + 0.01, params.decay / 3);
-
-    // VCA Envelope (Attack phase)
-    vca.gain.setValueAtTime(0, time);
-    vca.gain.setTargetAtTime(effectiveVolume, time, 0.005);
-
-    const isNextStepSlide = nextStep && nextStep.slide;
-
-    // If the note is not tied and not followed by a slide, schedule its decay.
-    if (!step.tie && !isNextStepSlide) {
-        vca.gain.setTargetAtTime(0, time + params.decay, 0.02);
-    }
-
-    osc.start(time);
-
-    // If the note is not tied and not followed by a slide, schedule it to stop.
-    if (!step.tie && !isNextStepSlide) {
-        osc.stop(time + params.decay + 0.1); // Add a tail
-    }
-
-    basslineOsc = osc;
-    basslineVcf = vcf;
-    basslineVca = vca;
-};
-
-export const stopBassline = (context: AudioContext) => {
-    if (!context) return;
-    const now = context.currentTime;
-    if (basslineVca) {
-        basslineVca.gain.cancelScheduledValues(now);
-        basslineVca.gain.setTargetAtTime(0, now, 0.01);
-    }
-    if (basslineOsc) {
-        try {
-            basslineOsc.stop(now + 0.02);
-        } catch (e) {
-            // Oscillator might already be stopped
-        }
-    }
-    basslineOsc = null;
-    basslineVca = null;
-    basslineVcf = null;
 };

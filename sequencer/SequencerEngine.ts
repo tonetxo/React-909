@@ -153,15 +153,6 @@ export class SequencerEngine {
         // We just queue it in the audio engine and store the index for later.
 
         // Store the NEXT song step so we can update it when the pattern actually switches
-        // Wait, currentSongStep needs to be updated when the switch happens.
-        // We can store it in a temp variable or just recalculate it? 
-        // Better to store the *next* song step index too if needed, but for now let's just update currentSongStep here?
-        // NO. If we update currentSongStep here, the UI might highlight the wrong step before it plays.
-        // Let's store nextSongStep in a property? 
-        // Actually, let's just update currentSongStep when the switch happens.
-        // But we need to know *which* song step corresponds to queuedPatternIndex.
-        // Let's store `queuedSongStep` as well.
-
         this.queuedPatternIndex = nextPatternIndex;
         this.queuedSongStep = nextSongStep;
 
@@ -171,15 +162,6 @@ export class SequencerEngine {
           pattern.bassline!,
           this.getPatternLength(pattern)
         );
-      } else {
-        // Next pattern invalid - maybe stop?
-        // For now, let's just not queue anything, which will cause a loop or stop depending on audio engine logic.
-        // Audio engine loops by default if nothing queued.
-        // We should probably explicitly stop if it's the end of the song.
-        if (nextSongStep === -1) {
-          // End of song - tell audio engine to stop after current pattern
-          this.audioEngine.setStopAtEndOfPattern(true);
-        }
       }
     } else {
       // End of song

@@ -61,6 +61,7 @@ class ClockProcessor extends AudioWorkletProcessor {
         if (currentTime - nextTickTime > this.RESYNC_THRESHOLD) {
           console.warn(`Clock resync: too far behind (${(currentTime - nextTickTime).toFixed(3)}s)`);
           this.syncOriginTime = currentTime - (this.ticksGenerated * this.tickInterval);
+          ticksSent++; // Safety: ensure loop makes progress
           continue;
         }
 

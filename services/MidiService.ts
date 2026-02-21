@@ -2,7 +2,7 @@
 export class MidiService {
     private midiAccess: WebMidi.MIDIAccess | null = null;
     private midiOutput: WebMidi.MIDIOutput | null = null;
-    private midiInputs: WebMidi.MIDIInput[] = []; // Track MIDI inputs to avoid feedback
+    private clockMessageCount = 0; // Diagnostic counter
 
     constructor() {
         this.init();
@@ -112,16 +112,6 @@ export class MidiService {
         }
     }
 
-    public sendContinue(): void {
-        if (!this.midiOutput) {
-            console.warn("No MIDI output available, cannot send MIDI Continue message");
-            return;
-        }
-        this.midiOutput.send([0xFB]);
-    }
-
-    private clockMessageCount = 0; // Diagnostic counter
-
     public sendTimingClock(timestamp: number): void {
         if (!this.midiOutput) {
             return;
@@ -129,36 +119,23 @@ export class MidiService {
         try {
             // The timestamp should be a DOMHighResTimeStamp in milliseconds (performance.now() time base).
             this.midiOutput.send([0xF8], timestamp);
-
-            // Diagnostic logging removed for production stability
         } catch (e) {
-            // Log errors instead of silently ignoring
             console.error('MIDI Clock send error:', e);
         }
     }
 
-    public setTempo(tempo: number): void {
-        // This method is now just a placeholder for potential future use,
-        // as tempo is managed directly in AudioEngine for clock generation.
-        console.log(`MIDI service tempo updated to ${tempo} BPM (for logging)`);
-    }
 
     public getAvailableOutputs(): string[] {
         if (!this.midiAccess) return [];
         // Filter out "Midi Through" and ports that look like inputs to prevent feedback loops and confusion
         return Array.from(this.midiAccess.outputs.values())
-            .filter(output => 
-                !output.name.includes('Midi Through') && 
+            .filter(output =>
+                !output.name.includes('Midi Through') &&
                 !output.name.toLowerCase().includes('input')
             )
             .map(output => output.name);
     }
 
-    // Method to check for potential feedback routes
-    public checkPotentialFeedback(): void {
-        if (!this.midiAccess) return;
-        // (Logic simplified as we now filter the UI list directly)
-    }
 
     public getAllInputs(): WebMidi.MIDIInput[] {
         if (!this.midiAccess) return [];
