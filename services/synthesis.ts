@@ -31,8 +31,14 @@ export class BasslineSynth {
         }
         this.lastNoteTime = time;
 
-        const freq = step.note ? midiToFreq(step.note) : 0;
-        const velocityGain = 0.5 + (step.velocity / 5) * 0.5;
+        const isSineOrTri = params.waveform === 'sine' || params.waveform === 'triangle';
+        const shiftNote = isSineOrTri ? 12 : 0; // Octave up to compensate lack of harmonics
+
+        const freq = step.note ? midiToFreq(step.note + shiftNote) : 0;
+
+        // Base gain calculation, double it for sine/triangle since they have no harmonic energy
+        const baseGain = isSineOrTri ? 1.0 : 0.5;
+        const velocityGain = baseGain + (step.velocity / 5) * baseGain;
         const isAccent = step.velocity > 3;
 
         const effectiveCutoff = params.cutoff + (isAccent ? params.accent * 2500 : 0);
