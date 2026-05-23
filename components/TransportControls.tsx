@@ -11,6 +11,8 @@ interface TransportControlsProps {
   onSwingChange: (value: number) => void;
   timeSignature: TimeSignature;
   onTimeSignatureChange: (timeSignature: TimeSignature) => void;
+  masterVolume: number;
+  onMasterVolumeChange: (value: number) => void;
 }
 
 const PlayIcon = () => (
@@ -33,7 +35,9 @@ const TransportControls: React.FC<TransportControlsProps> = React.memo(({
   swing,
   onSwingChange,
   timeSignature,
-  onTimeSignatureChange
+  onTimeSignatureChange,
+  masterVolume,
+  onMasterVolumeChange
 }) => {
   const [tempoInput, setTempoInput] = useState(String(tempo));
   const [swingInput, setSwingInput] = useState(String(swing));
@@ -152,6 +156,21 @@ const TransportControls: React.FC<TransportControlsProps> = React.memo(({
           ))}
         </select>
         <span className="text-lg font-mono bg-gray-800 text-white px-3 py-1 rounded-md w-24 text-center">{timeSignature.join('/')}</span>
+      </div>
+
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3">
+        <label htmlFor="master-volume" className="text-gray-300 font-medium w-16 text-right">Volume</label>
+        <input
+          type="range"
+          id="master-volume"
+          min="0"
+          max="1"
+          step="0.01"
+          value={masterVolume}
+          onChange={(e) => onMasterVolumeChange(Number(e.target.value))}
+          className="w-full accent-yellow-500"
+        />
+        <span className="text-lg font-mono bg-gray-800 text-white px-3 py-1 rounded-md w-24 text-center">{Math.round(masterVolume * 100)}%</span>
       </div>
     </div>
   );

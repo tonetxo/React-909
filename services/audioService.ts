@@ -85,6 +85,12 @@ export class AudioEngine {
         return this.audioContext;
     }
 
+    public setMasterVolume(value: number) {
+        if (this.masterGain && this.audioContext) {
+            this.masterGain.gain.setTargetAtTime(value, this.audioContext.currentTime, 0.02);
+        }
+    }
+
     public async ensureAudioInitialized(): Promise<AudioContext> {
         if (!this.isInitialized) {
             await this.initAudio();

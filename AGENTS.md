@@ -1,0 +1,43 @@
+# GrooveGal (O Grove Son) — Agent Guide
+
+Commands:
+- `npm run dev` — Vite dev server on port 3000
+- `npm run start` — Vite dev + wait-on + Electron (requires display server)
+- `npm run build` — Vite production build to `dist/`
+- `npm run preview` — Vite preview of build output
+- `npm run electron:dev` — Launch Electron alone
+- `npm run electron:build` — `vite build && electron-builder`
+- `npx tsc --noEmit` — typecheck (the only static check; no lint/format/test infra exists)
+
+Architecture:
+- **AudioEngine** singleton (`services/audioService.ts`) manages AudioContext, worklets, bus routing, scheduling
+- **SequencerEngine** (`sequencer/SequencerEngine.ts`) bridges React state and AudioEngine
+- **React state** lives entirely in `App.tsx` (the `state/` dir is empty)
+- AudioWorklets (`clock-processor.js`, `vocoder-processor.js`) are separate Rollup entries with stable output `services/[name].js` (no hash)
+
+Build & Dev:
+- Dev server: `http://0.0.0.0:3000` (not Vite default 5173)
+- `@/` path alias resolves to project root
+- Tailwind CSS loaded via CDN in `index.html` — no PostCSS/build step, no tailwind.config
+- `GEMINI_API_KEY` injected at build time via Vite `define`; set as env var or in `.env`
+- `electron.cjs` is CommonJS (rest of project is ESM). `easymidi` is Node-only (used by `electron-slave.js`)
+- PWA via `vite-plugin-pwa` with `autoUpdate`, offline-capable
+
+TypeScript:
+- `noEmit: true`, `moduleResolution: "bundler"`, `allowJs: true`
+- `typeRoots: ["./types", "node_modules/@types"]` — custom MIDI API types in `types/midi.d.ts`
+- `experimentalDecorators: true` / `useDefineForClassFields: false`
+
+Project Data:
+- Root `.json` files (`pobas*.json`, `song_multimetrica*.json`, `*x*.json`, `tie_error.json`, `gemini-*.json`) are **song/pattern exports** from the app, not config
+- `GEMINI.md` / `QWEN.md` are AI code-review prompts (in Spanish), not project instructions
+- `tatus` is a stale git-log artifact, can be ignored
+- `metadata.json` is stale OpenCode metadata, can be ignored
+
+Validation scripts (no test framework):
+- `bash validate-sync-fixes.sh` — checks critical MIDI sync fixes are present
+- `bash validate-improvements.sh` — checks MIDI sync improvements
+- `bash check-midi-clock.sh` — diagnose MIDI clock output
+- `bash cleanup-midi.sh` — kill zombie MIDI slave processes
+
+Repo convention: project name "GrooveGal", display name "O Grove Son". Galician language UI and docs.

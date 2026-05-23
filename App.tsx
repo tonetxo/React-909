@@ -107,6 +107,8 @@ const App: React.FC = () => {
   const [clipboard, setClipboard] = useState<Pattern | null>(null);
   const [instrumentClipboard, setInstrumentClipboard] = useState<Velocity[] | null>(null);
 
+  const [masterVolume, setMasterVolume] = useState<number>(0.7);
+
   const [vocoderType, setVocoderType] = useState<VocoderType>('original');
   const [vocoderParams, setVocoderParams] = useState<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
 
@@ -288,6 +290,11 @@ const App: React.FC = () => {
 
   const handleTempoChange = useCallback((newTempo: number) => updateCurrentPattern(p => ({ ...p, tempo: newTempo })), [updateCurrentPattern]);
   const handleSwingChange = useCallback((newSwing: number) => updateCurrentPattern(p => ({ ...p, swing: newSwing })), [updateCurrentPattern]);
+
+  const handleMasterVolumeChange = useCallback((value: number) => {
+    setMasterVolume(value);
+    audioEngine.setMasterVolume(value);
+  }, []);
 
   useEffect(() => {
     const [beats, beatType] = timeSignature;
@@ -528,7 +535,7 @@ const App: React.FC = () => {
           <p className="text-gray-400 mt-1">Unha caixa de ritmos con liña de baixo e vocoder</p>
         </header>
         <main className="space-y-6 flex flex-col items-center">
-          <TransportControls isPlaying={isPlaying} onPlayToggle={handlePlayToggle} tempo={tempo} onTempoChange={handleTempoChange} swing={swing} onSwingChange={handleSwingChange} timeSignature={timeSignature} onTimeSignatureChange={handleTimeSignatureChange} />
+          <TransportControls isPlaying={isPlaying} onPlayToggle={handlePlayToggle} tempo={tempo} onTempoChange={handleTempoChange} swing={swing} onSwingChange={handleSwingChange} timeSignature={timeSignature} onTimeSignatureChange={handleTimeSignatureChange} masterVolume={masterVolume} onMasterVolumeChange={handleMasterVolumeChange} />
           <MidiOutputSelector onOutputSelect={handleMidiOutputChange} />
           <PatternControls patterns={patterns} selectedPatternIndex={selectedPatternIndex} onLoad={handleLoadPattern} onSave={handleSavePattern} onExport={handleExportPatterns} onImport={handleImportPatterns} onCopy={handleCopyPattern} onPaste={handlePastePattern} isClipboardEmpty={clipboard === null} isPlaying={isPlaying} onReset={handleReset} />
           <SongSequencer sequence={songSequence} isActive={isSongModeActive} isLooping={isSongLooping} currentStep={currentSongStep} onToggle={handleToggleSongMode} onToggleLoop={handleToggleSongLoop} onStepClick={handleSongStepClick} onClear={handleClearSong} />
