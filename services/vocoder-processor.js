@@ -101,10 +101,15 @@ const midiToFreq = (note) => 440 * Math.pow(2, (note - 69) / 12);
 // Internal carrier: up to MAX_SYNTH_VOICES oscillators, one per held note. Each voice ramps its
 // gain in and out (no clicks), and a held note keeps its voice so its phase stays continuous.
 // With a glide time and a single note (Mono), the sounding voice slides to the new pitch instead.
+// Each voice has a velocity gain. Inside the carrier only the balance between chord notes is kept
+// (the loudest voice at full level, so quiet notes don't sink below the normaliser's floor); the
+// overall level is `velocityLevel`, the voices' gain-weighted RMS velocity, applied after the per-band
+// carrier normalisation, which would otherwise cancel it.
 class PolySynth {
     constructor() {
         // logFreq / glideTarget: current and target pitch as ln(Hz), so a glide takes the same time for any interval
-        this.voices = Array.from({ length: MAX_SYNTH_VOICES }, () => ({ osc: new Oscillator(), note: -1, gain: 0, target: 0, logFreq: 0, glideTarget: 0 }));
+        this.voices = Array.from({ length: MAX_SYNTH_VOICES }, () => ({ osc: new Oscillator(), note: -1, gain: 0, target: 0, logFreq: 0, glideTarget: 0, velocity: 1, velocityTarget: 1 }));
+        this.velocityLevel = 1;
         this.glideCoeff = 1;
         this.attackCoeff = timeToCoeff(0.003);
         this.releaseCoeff = timeToCoeff(0.03);
@@ -121,14 +126,17 @@ class PolySynth {
         for (const voice of this.voices) voice.osc.type = type;
     }
 
-    /** `glide`: seconds to (nearly, ~95%) reach a new single note; 0 jumps. */
-    setNotes(notes, glide = 0) {
-        const wanted = [...new Set(notes)].slice(0, MAX_SYNTH_VOICES);
+    /** `glide`: seconds to (nearly, ~95%) reach a new single note; 0 jumps. `gains`: velocity gain per note (default 1). */
+    setNotes(notes, glide = 0, gains = []) {
+        const gainOf = new Map();
+        notes.forEach((note, i) => { if (!gainOf.has(note)) gainOf.set(note, gains[i] ?? 1); });
+        const wanted = [...gainOf.keys()].slice(0, MAX_SYNTH_VOICES);
         if (glide > 0 && wanted.length === 1) {
             const sounding = this.voices.filter(voice => voice.target === 1);
             if (sounding.length === 1) {
                 const voice = sounding[0];
                 voice.note = wanted[0];
+                voice.velocityTarget = gainOf.get(wanted[0]);
                 voice.glideTarget = Math.log(midiToFreq(wanted[0]));
                 this.glideCoeff = timeToCoeff(glide / 3); // three time constants = 95%
                 this.level = 1;
@@ -139,8 +147,12 @@ class PolySynth {
         for (const voice of this.voices) {
             if (voice.target === 0) continue;
             const index = wanted.indexOf(voice.note);
-            if (index >= 0) wanted.splice(index, 1);
-            else voice.target = 0;
+            if (index >= 0) {
+                wanted.splice(index, 1);
+                voice.velocityTarget = gainOf.get(voice.note);
+            } else {
+                voice.target = 0;
+            }
         }
         // New notes take the quietest released voice
         for (const note of wanted) {
@@ -149,6 +161,7 @@ class PolySynth {
             free.note = note;
             free.osc.frequency = midiToFreq(note);
             free.logFreq = free.glideTarget = Math.log(free.osc.frequency);
+            free.velocity = free.velocityTarget = gainOf.get(note);
             free.target = 1;
         }
         // Keep the summed tone at a similar level next to the sibilance noise, whatever the chord size
@@ -157,7 +170,11 @@ class PolySynth {
     }
 
     process() {
-        let sum = 0;
+        let sum = 0, weightedVelocity = 0, weight = 0, loudest = 0;
+        for (const voice of this.voices) {
+            if (voice.gain > 0 || voice.target > 0) loudest = Math.max(loudest, voice.velocity);
+        }
+        const balance = loudest > 0 ? 1 / loudest : 1;
         for (const voice of this.voices) {
             if (voice.target === 0 && voice.gain === 0) continue;
             voice.gain += (voice.target - voice.gain) * (voice.target > voice.gain ? this.attackCoeff : this.releaseCoeff);
@@ -170,8 +187,13 @@ class PolySynth {
                 voice.logFreq = Math.abs(remaining) < 1e-5 ? voice.glideTarget : voice.logFreq + remaining * this.glideCoeff;
                 voice.osc.frequency = Math.exp(voice.logFreq);
             }
-            sum += voice.osc.process() * voice.gain;
+            voice.velocity += (voice.velocityTarget - voice.velocity) * this.attackCoeff;
+            const amplitude = voice.gain * voice.velocity;
+            sum += voice.osc.process() * amplitude * balance;
+            weightedVelocity += amplitude * amplitude;
+            weight += voice.gain * voice.gain;
         }
+        this.velocityLevel = weight > 0 ? Math.sqrt(weightedVelocity / weight) : 1;
         return sum * this.level;
     }
 }
@@ -273,7 +295,7 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
             if (event.data.type === 'SET_CARRIER_WAVEFORM') {
                 this.carrierSynth.type = event.data.value;
             } else if (event.data.type === 'SET_SYNTH_NOTES') {
-                this.carrierSynth.setNotes(event.data.value, event.data.glide);
+                this.carrierSynth.setNotes(event.data.value, event.data.glide, event.data.gains);
             } else if (event.data.type === 'SET_CARRIER_SOURCE') {
                 this.useExternalCarrier = event.data.value === 'external';
             }
@@ -413,7 +435,8 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
                 (gateTarget > this.gateGain ? this.gateOpenCoeff : this.gateCloseCoeff);
 
             // Soft clip so loud input saturates gently instead of clipping
-            const wet = Math.tanh(wetSignal * bandGain * this.gateGain) * (keyGate.length > 1 ? keyGate[i] : keyGate[0]);
+            const synthLevel = this.useExternalCarrier ? 1 : this.carrierSynth.velocityLevel;
+            const wet = Math.tanh(wetSignal * bandGain * this.gateGain) * synthLevel * (keyGate.length > 1 ? keyGate[i] : keyGate[0]);
             output[i] = drySample * (1 - dryWet) + wet * dryWet;
         }
 

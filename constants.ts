@@ -268,6 +268,7 @@ export const INITIAL_VOCODER_PARAMS: VocoderParams = {
   keyGate: false,
   poly: true,
   glide: 0.1,
+  velocitySensitivity: 0.75,
   voiceGain: 30,
   noiseGate: 5,
   attack: 0.003,

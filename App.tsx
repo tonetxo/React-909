@@ -11,7 +11,7 @@ import { Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Wavef
 import { INITIAL_VOCODER_PARAMS, SYNTH_PITCH_MIN, SYNTH_PITCH_MAX, MAX_SYNTH_VOICES } from './constants';
 import { audioEngine } from './services/audioService';
 import { ALL_MIDI_INPUTS } from './services/MidiService';
-import { HeldNotes, fitToRange, pcKeyToNote, PC_OCTAVE_DOWN, PC_OCTAVE_UP } from './services/noteInput';
+import { HeldNotes, fitToRange, pcKeyToNote, velocityToGain, DEFAULT_VELOCITY, PC_OCTAVE_DOWN, PC_OCTAVE_UP } from './services/noteInput';
 import { NUM_PATTERNS, SONG_STEPS, stepsFromTimeSig, resizeSequence, emptyBasslineStep, createDefaultPattern, createDefaultProject, parseProjectData, serializeProject } from './services/projectIO';
 
 const PROJECT_STORAGE_KEY = 'gemini-groove-project';
@@ -383,28 +383,42 @@ const App: React.FC = () => {
   // plays the latest MAX_SYNTH_VOICES of them (Poly) or just the latest (Mono). With no key held it plays
   // Synth Pitch, and the key gate (if on) closes.
   const heldNotesRef = useRef(new HeldNotes());
+  // Velocity per held note, and of the last pressed one (used for Synth Pitch when no key is held)
+  const noteVelocitiesRef = useRef(new Map<number, number>());
+  const lastVelocityRef = useRef(DEFAULT_VELOCITY);
   const updateSynthVoices = useCallback(() => {
     const params = vocoderParamsRef.current;
     const held = heldNotesRef.current.latest(params.poly ? MAX_SYNTH_VOICES : 1);
     const notes = held.length > 0 ? held : [params.synthPitch];
-    // Glide only makes sense for a single line of notes, so it applies in Mono only
-    audioEngine.setSynthNotes(notes.map(note => fitToRange(note, SYNTH_PITCH_MIN, SYNTH_PITCH_MAX)), params.poly ? 0 : params.glide);
+    const velocities = held.length > 0 ? held.map(note => noteVelocitiesRef.current.get(note) ?? DEFAULT_VELOCITY) : [lastVelocityRef.current];
+    audioEngine.setSynthNotes(
+      notes.map(note => fitToRange(note, SYNTH_PITCH_MIN, SYNTH_PITCH_MAX)),
+      // Glide only makes sense for a single line of notes, so it applies in Mono only
+      params.poly ? 0 : params.glide,
+      velocities.map(velocity => velocityToGain(velocity, params.velocitySensitivity)),
+    );
     audioEngine.setNoteKeyHeld(held.length > 0);
   }, [audioEngine]);
 
-  const handleNoteKey = useCallback((note: number, on: boolean) => {
+  const handleNoteKey = useCallback((note: number, on: boolean, velocity: number) => {
     const held = heldNotesRef.current;
+    if (on) {
+      noteVelocitiesRef.current.set(note, velocity);
+      lastVelocityRef.current = velocity;
+    } else {
+      noteVelocitiesRef.current.delete(note);
+    }
     const current = on ? held.press(note) : held.release(note);
     if (current !== null) setSynthPitch(current);
     updateSynthVoices();
   }, [setSynthPitch, updateSynthVoices]);
 
-  useEffect(() => audioEngine.subscribeMidiNotes(({ note, on }) => handleNoteKey(note, on)), [audioEngine, handleNoteKey]);
+  useEffect(() => audioEngine.subscribeMidiNotes(({ note, on, velocity }) => handleNoteKey(note, on, velocity)), [audioEngine, handleNoteKey]);
 
-  // Synth Pitch slider and Mono/Poly changes
+  // Synth Pitch slider, Mono/Poly and velocity sensitivity changes
   useEffect(() => {
     updateSynthVoices();
-  }, [vocoderParams.synthPitch, vocoderParams.poly, updateSynthVoices]);
+  }, [vocoderParams.synthPitch, vocoderParams.poly, vocoderParams.velocitySensitivity, updateSynthVoices]);
 
   const pcKeyboardBaseRef = useRef(pcKeyboardBase);
   pcKeyboardBaseRef.current = pcKeyboardBase;
@@ -425,17 +439,17 @@ const App: React.FC = () => {
       const note = pcKeyToNote(e.code, pcKeyboardBaseRef.current);
       if (note === undefined) return;
       pressed.set(e.code, note);
-      handleNoteKey(note, true);
+      handleNoteKey(note, true, DEFAULT_VELOCITY); // the PC keyboard has no velocity
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       const note = pressed.get(e.code);
       if (note === undefined) return;
       pressed.delete(e.code);
-      handleNoteKey(note, false);
+      handleNoteKey(note, false, 0);
     };
     // Keys released while the window is unfocused never send keyup
     const handleBlur = () => {
-      pressed.forEach(note => handleNoteKey(note, false));
+      pressed.forEach(note => handleNoteKey(note, false, 0));
       pressed.clear();
     };
 

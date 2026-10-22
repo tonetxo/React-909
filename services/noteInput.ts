@@ -35,6 +35,7 @@ export class HeldNotes {
 export interface NoteMessage {
     note: number;
     on: boolean;
+    velocity: number; // 1-127 for note on, 0 for note off
 }
 
 // MIDI channel 10 (index 9) is the drum channel: the pads of most controllers send there
@@ -46,10 +47,19 @@ export const parseNoteMessage = (data: ArrayLike<number>): NoteMessage | null =>
     const type = data[0] & 0xf0;
     const channel = data[0] & 0x0f;
     if (channel === DRUM_CHANNEL) return null;
-    if (type === 0x90) return { note: data[1], on: data[2] > 0 }; // Note on with velocity 0 = note off
-    if (type === 0x80) return { note: data[1], on: false };
+    if (type === 0x90) return { note: data[1], on: data[2] > 0, velocity: data[2] }; // Note on with velocity 0 = note off
+    if (type === 0x80) return { note: data[1], on: false, velocity: 0 };
     return null;
 };
+
+// Level range covered by the velocity at full sensitivity: velocity 127 = 0 dB, velocity 0 = -40 dB
+const VELOCITY_RANGE_DB = 40;
+/** Velocity used for keys without one (the PC keyboard). */
+export const DEFAULT_VELOCITY = 100;
+
+/** Linear gain for a note velocity (1-127); `sensitivity` 0 ignores velocity, 1 uses the full range. */
+export const velocityToGain = (velocity: number, sensitivity: number): number =>
+    Math.pow(10, (sensitivity * VELOCITY_RANGE_DB * (velocity / 127 - 1)) / 20);
 
 /** Moves a note by octaves until it lies within [min, max]. */
 export const fitToRange = (note: number, min: number, max: number): number => {
