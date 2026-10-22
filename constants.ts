@@ -1,4 +1,4 @@
-import { Instrument, Velocity, BasslinePattern, ParamDefinition, VocoderParams, Waveform } from './types';
+import { Instrument, Velocity, BasslinePattern, ParamDefinition, VocoderParams, VocoderCarrier, Waveform } from './types';
 
 export const WAVEFORMS: Waveform[] = ['sawtooth', 'square', 'sine', 'triangle'];
 export const WAVEFORM_LABELS: Record<Waveform, string> = { sawtooth: 'SAW', square: 'SQR', sine: 'SIN', triangle: 'TRI' };
@@ -257,6 +257,25 @@ export const SYNTH_PITCH_MIN = 24; // C1
 export const SYNTH_PITCH_MAX = 84; // C6
 // Keep in step with MAX_SYNTH_VOICES in services/vocoder-processor.js
 export const MAX_SYNTH_VOICES = 4;
+
+export const VOCODER_CARRIERS: VocoderCarrier[] = ['drums', 'bass', 'both', 'synth'];
+
+type NumericVocoderParam = { [K in keyof VocoderParams]: VocoderParams[K] extends number ? K : never }[keyof VocoderParams];
+
+// Slider ranges, also used to validate saved settings
+export const VOCODER_PARAM_RANGES: Record<NumericVocoderParam, { min: number; max: number; step: number }> = {
+  mix: { min: 0, max: 1, step: 0.01 },
+  formantShift: { min: -12, max: 12, step: 1 },
+  synthPitch: { min: SYNTH_PITCH_MIN, max: SYNTH_PITCH_MAX, step: 1 },
+  glide: { min: 0, max: 0.5, step: 0.01 },
+  velocitySensitivity: { min: 0, max: 1, step: 0.01 },
+  voiceGain: { min: 1, max: 100, step: 1 },
+  noiseGate: { min: 0, max: 50, step: 1 },
+  attack: { min: 0.001, max: 0.1, step: 0.001 },
+  release: { min: 0.01, max: 0.2, step: 0.001 },
+  sibilance: { min: 0, max: 1, step: 0.01 },
+  qFactor: { min: 1, max: 12, step: 0.5 },
+};
 
 export const INITIAL_VOCODER_PARAMS: VocoderParams = {
   enabled: false,

@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { VocoderParams, VocoderCarrier } from '../types';
-import { WAVEFORMS, WAVEFORM_LABELS, SYNTH_PITCH_MIN, SYNTH_PITCH_MAX } from '../constants';
+import { WAVEFORMS, WAVEFORM_LABELS, VOCODER_CARRIERS, VOCODER_PARAM_RANGES } from '../constants';
 
 interface VocoderControlsProps {
     params: VocoderParams;
@@ -42,6 +42,7 @@ const ParamSlider: React.FC<{
     </div>
 );
 
+const CARRIER_LABELS: Record<VocoderCarrier, string> = { drums: 'Drums', bass: 'Bass', both: 'Both', synth: 'Synth' };
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const formatNote = (midi: number) => `${NOTE_NAMES[midi % 12]}${Math.floor(midi / 12) - 1}`; // 60 = C4
 const formatPercent = (v: number) => `${Math.round(v * 100)}%`;
@@ -51,12 +52,7 @@ const formatInteger = (v: number) => v.toFixed(0);
 
 const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, onParamChange, pcKeyboardBase, startVisualizer, stopVisualizer }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const carriers: { id: VocoderCarrier, label: string }[] = [
-        { id: 'drums', label: 'Drums' },
-        { id: 'bass', label: 'Bass' },
-        { id: 'both', label: 'Both' },
-        { id: 'synth', label: 'Synth' }
-    ];
+    const carriers = VOCODER_CARRIERS.map(id => ({ id, label: CARRIER_LABELS[id] }));
 
     useEffect(() => {
         if (params.enabled && canvasRef.current) {
@@ -107,13 +103,13 @@ const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, on
                         </div>
                     </div>
 
-                    <ParamSlider id="vocoder-mix" label="Mix" min={0} max={1} step={0.01} value={params.mix} onChange={(v) => onParamChange('mix', v)} format={formatPercent} disabled={!params.enabled} />
-                    <ParamSlider id="vocoder-formant" label="Formant" min={-12} max={12} step={1} value={params.formantShift} onChange={(v) => onParamChange('formantShift', v)} format={formatSemitones} disabled={!params.enabled} />
+                    <ParamSlider id="vocoder-mix" label="Mix" {...VOCODER_PARAM_RANGES.mix} value={params.mix} onChange={(v) => onParamChange('mix', v)} format={formatPercent} disabled={!params.enabled} />
+                    <ParamSlider id="vocoder-formant" label="Formant" {...VOCODER_PARAM_RANGES.formantShift} value={params.formantShift} onChange={(v) => onParamChange('formantShift', v)} format={formatSemitones} disabled={!params.enabled} />
 
                     <ParamSlider
                         id="vocoder-pitch"
                         label="Synth Pitch"
-                        min={SYNTH_PITCH_MIN} max={SYNTH_PITCH_MAX} step={1}
+                        {...VOCODER_PARAM_RANGES.synthPitch}
                         value={params.synthPitch}
                         onChange={(v) => onParamChange('synthPitch', v)}
                         format={formatNote}
@@ -156,10 +152,10 @@ const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, on
                             Gate {params.keyGate ? 'ON' : 'OFF'}
                         </button>
                         <div className="w-36 shrink-0" title="Glide (só en Mono): tempo para esvarar dunha nota á seguinte">
-                            <ParamSlider id="vocoder-glide" label="Glide" min={0} max={0.5} step={0.01} value={params.glide} onChange={(v) => onParamChange('glide', v)} format={formatMs} disabled={!params.enabled || params.carrier !== 'synth' || params.poly} />
+                            <ParamSlider id="vocoder-glide" label="Glide" {...VOCODER_PARAM_RANGES.glide} value={params.glide} onChange={(v) => onParamChange('glide', v)} format={formatMs} disabled={!params.enabled || params.carrier !== 'synth' || params.poly} />
                         </div>
                         <div className="w-36 shrink-0" title="Sensibilidade á velocidade das teclas MIDI (0% = todas soan igual)">
-                            <ParamSlider id="vocoder-velocity" label="Velocity" min={0} max={1} step={0.01} value={params.velocitySensitivity} onChange={(v) => onParamChange('velocitySensitivity', v)} format={formatPercent} disabled={!params.enabled || params.carrier !== 'synth'} />
+                            <ParamSlider id="vocoder-velocity" label="Velocity" {...VOCODER_PARAM_RANGES.velocitySensitivity} value={params.velocitySensitivity} onChange={(v) => onParamChange('velocitySensitivity', v)} format={formatPercent} disabled={!params.enabled || params.carrier !== 'synth'} />
                         </div>
                         <p className="text-xs text-gray-500">
                             Toca Synth Pitch co teclado MIDI ou co do PC: fila A–Ñ (A = {formatNote(pcKeyboardBase)}), W E T Y U O P para as negras, Z / X baixan ou soben a oitava.
@@ -176,12 +172,12 @@ const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, on
             </div>
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                 <h5 className="col-span-full text-xs text-gray-400 font-medium border-b border-gray-700 pb-1 mb-1">Settings</h5>
-                <ParamSlider id="vocoder-voice-gain" label="Voice Gain" min={1} max={100} step={1} value={params.voiceGain} onChange={(v) => onParamChange('voiceGain', v)} format={formatInteger} disabled={!params.enabled} />
-                <ParamSlider id="vocoder-noise-gate" label="Noise Gate" min={0} max={50} step={1} value={params.noiseGate} onChange={(v) => onParamChange('noiseGate', v)} format={formatInteger} disabled={!params.enabled} />
-                <ParamSlider id="vocoder-attack" label="Attack" min={0.001} max={0.1} step={0.001} value={params.attack} onChange={(v) => onParamChange('attack', v)} format={formatMs} disabled={!params.enabled} />
-                <ParamSlider id="vocoder-release" label="Release" min={0.01} max={0.2} step={0.001} value={params.release} onChange={(v) => onParamChange('release', v)} format={formatMs} disabled={!params.enabled} />
-                <ParamSlider id="vocoder-sibilance" label="Sibilance" min={0} max={1} step={0.01} value={params.sibilance} onChange={(v) => onParamChange('sibilance', v)} format={formatPercent} disabled={!params.enabled} />
-                <ParamSlider id="vocoder-q-factor" label="Q-Factor" min={1} max={12} step={0.5} value={params.qFactor} onChange={(v) => onParamChange('qFactor', v)} format={(v) => v.toFixed(1)} disabled={!params.enabled} />
+                <ParamSlider id="vocoder-voice-gain" label="Voice Gain" {...VOCODER_PARAM_RANGES.voiceGain} value={params.voiceGain} onChange={(v) => onParamChange('voiceGain', v)} format={formatInteger} disabled={!params.enabled} />
+                <ParamSlider id="vocoder-noise-gate" label="Noise Gate" {...VOCODER_PARAM_RANGES.noiseGate} value={params.noiseGate} onChange={(v) => onParamChange('noiseGate', v)} format={formatInteger} disabled={!params.enabled} />
+                <ParamSlider id="vocoder-attack" label="Attack" {...VOCODER_PARAM_RANGES.attack} value={params.attack} onChange={(v) => onParamChange('attack', v)} format={formatMs} disabled={!params.enabled} />
+                <ParamSlider id="vocoder-release" label="Release" {...VOCODER_PARAM_RANGES.release} value={params.release} onChange={(v) => onParamChange('release', v)} format={formatMs} disabled={!params.enabled} />
+                <ParamSlider id="vocoder-sibilance" label="Sibilance" {...VOCODER_PARAM_RANGES.sibilance} value={params.sibilance} onChange={(v) => onParamChange('sibilance', v)} format={formatPercent} disabled={!params.enabled} />
+                <ParamSlider id="vocoder-q-factor" label="Q-Factor" {...VOCODER_PARAM_RANGES.qFactor} value={params.qFactor} onChange={(v) => onParamChange('qFactor', v)} format={(v) => v.toFixed(1)} disabled={!params.enabled} />
             </div>
         </div>
     );

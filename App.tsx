@@ -11,6 +11,7 @@ import { Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Wavef
 import { INITIAL_VOCODER_PARAMS, SYNTH_PITCH_MIN, SYNTH_PITCH_MAX, MAX_SYNTH_VOICES } from './constants';
 import { audioEngine } from './services/audioService';
 import { ALL_MIDI_INPUTS } from './services/MidiService';
+import { VOCODER_STORAGE_KEY, parseVocoderSettings, serializeVocoderSettings } from './services/vocoderSettings';
 import { HeldNotes, fitToRange, pcKeyToNote, velocityToGain, DEFAULT_VELOCITY, PC_OCTAVE_DOWN, PC_OCTAVE_UP } from './services/noteInput';
 import { NUM_PATTERNS, SONG_STEPS, stepsFromTimeSig, resizeSequence, emptyBasslineStep, createDefaultPattern, createDefaultProject, parseProjectData, serializeProject } from './services/projectIO';
 
@@ -19,6 +20,16 @@ const PROJECT_STORAGE_KEY = 'gemini-groove-project';
 const MIDI_OUTPUT_OPTIONS = [{ value: '', label: 'None (Disabled)' }];
 const MIDI_INPUT_OPTIONS = [{ value: ALL_MIDI_INPUTS, label: 'All inputs' }, { value: '', label: 'None (Disabled)' }];
 const DEFAULT_PC_KEYBOARD_BASE = 48; // the A key plays C3
+
+const loadVocoderSettings = (): VocoderParams => {
+  try {
+    const saved = localStorage.getItem(VOCODER_STORAGE_KEY);
+    return parseVocoderSettings(saved ? JSON.parse(saved) : null);
+  } catch (error) {
+    console.error("Failed to load vocoder settings:", error);
+    return parseVocoderSettings(null);
+  }
+};
 
 const App: React.FC = () => {
   const [timeSignature, setTimeSignature] = useState<TimeSignature>([4, 4]);
@@ -34,7 +45,7 @@ const App: React.FC = () => {
 
   const [masterVolume, setMasterVolume] = useState<number>(0.7);
 
-  const [vocoderParams, setVocoderParams] = useState<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
+  const [vocoderParams, setVocoderParams] = useState<VocoderParams>(loadVocoderSettings);
   const [pcKeyboardBase, setPcKeyboardBase] = useState<number>(DEFAULT_PC_KEYBOARD_BASE);
   // Latest vocoder params for the note input listeners, which live outside React's render cycle
   const vocoderParamsRef = useRef(vocoderParams);
@@ -166,6 +177,18 @@ const App: React.FC = () => {
       sequencerEngine.updateSwing(swing);
     }
   }, [isPlaying, activePattern, tempo, swing, sequencerEngine]);
+
+  // Save vocoder settings (debounced: sliders fire many changes)
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      try {
+        localStorage.setItem(VOCODER_STORAGE_KEY, serializeVocoderSettings(vocoderParams));
+      } catch (error) {
+        console.error("Failed to save vocoder settings:", error);
+      }
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [vocoderParams]);
 
   // --- Vocoder Initialization ---
   useEffect(() => {
