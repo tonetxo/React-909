@@ -1,6 +1,7 @@
 import path from 'path';
 import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // Applied to production builds only: the dev server injects inline scripts (React Refresh).
@@ -33,6 +34,7 @@ export default defineConfig(() => {
     },
     plugins: [
       react(),
+      tailwindcss(),
       cspPlugin(),
       VitePWA({
         registerType: 'autoUpdate',

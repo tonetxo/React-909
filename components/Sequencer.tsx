@@ -59,7 +59,7 @@ const Sequencer: React.FC<SequencerProps> = React.memo(({
                 onClear={(id) => onInstrumentAction(id, 'clear')}
                 isPasteDisabled={isInstrumentPasteDisabled}
               />
-              <div className="flex items-center gap-1 ml-2 flex-grow">
+              <div className="flex items-center gap-1 ml-2 grow">
                 {instrument.sequence.map((velocity, stepIndex) => {
                   const isBeatSeparator = stepIndex > 0 && stepIndex % beatsPerMeasure === 0;
                   return (

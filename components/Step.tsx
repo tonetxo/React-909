@@ -10,7 +10,7 @@ interface StepProps {
 }
 
 const Step: React.FC<StepProps> = ({ velocity, isCurrent, onClick, onContextMenu }) => {
-  const baseClasses = "w-full h-8 rounded-md border-2 transition-all duration-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-yellow-400";
+  const baseClasses = "w-full h-8 rounded-md border-2 transition-all duration-100 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-yellow-400";
   
   const activeClasses = velocity > 0 && velocity <= DRUM_VELOCITY_COLORS.length
     ? `${DRUM_VELOCITY_COLORS[velocity - 1]} shadow-md`

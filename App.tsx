@@ -438,7 +438,7 @@ const App: React.FC = () => {
           )}
         </main>
 
-        <footer className="mt-8 text-center text-gray-500 text-sm">
+        <footer className="text-center text-gray-500 text-sm">
           <p>Sound synthesis powered by the Web Audio API.</p>
         </footer>
       </div>

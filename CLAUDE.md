@@ -44,7 +44,7 @@ Three layers, top to bottom:
 
 ## Conventions and gotchas
 
-- Tailwind CSS v3 is built locally via PostCSS (`tailwind.config.js`, `postcss.config.js`, `index.css`). Class names must appear literally in files listed under `content` (incl. `constants.ts`); don't build them with string interpolation.
+- Tailwind CSS v4 is built locally via the `@tailwindcss/vite` plugin; all config lives in `index.css` (no `tailwind.config.js`). Class names must appear literally in the files listed by its `@source` lines (incl. `constants.ts`); don't build them with string interpolation. Its `@theme` pins Tailwind v3's font stack and sRGB palette, and a base layer restores v3's border colour and button cursor, so the UI looks as it did under v3 — add a v3 colour family there before using a new one, or it will get v4's oklch colours.
 - Production builds inject a strict Content-Security-Policy meta tag (`cspPlugin` in `vite.config.ts`): no inline scripts and no remote origins — extend the policy there if a new source is needed.
 - `@/` aliases the project root. TS uses `moduleResolution: "bundler"`, `allowJs`, `experimentalDecorators`, `useDefineForClassFields: false`.
 - PWA via `vite-plugin-pwa` (`autoUpdate`); assets in `public/`.

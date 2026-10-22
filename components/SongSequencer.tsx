@@ -30,12 +30,12 @@ const SongSequencer: React.FC<SongSequencerProps> = React.memo(({
             onClick={onToggle}
             role="switch"
             aria-checked={isActive}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${isActive ? 'bg-yellow-500' : 'bg-gray-600'
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${isActive ? 'bg-yellow-500' : 'bg-gray-600'
               }`}
           >
             <span
               aria-hidden="true"
-              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isActive ? 'translate-x-5' : 'translate-x-0'
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${isActive ? 'translate-x-5' : 'translate-x-0'
                 }`}
             />
           </button>
@@ -47,12 +47,12 @@ const SongSequencer: React.FC<SongSequencerProps> = React.memo(({
               role="switch"
               aria-checked={isLooping}
               disabled={!isActive}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:cursor-not-allowed ${isLooping ? 'bg-yellow-500' : 'bg-gray-600'
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:cursor-not-allowed ${isLooping ? 'bg-yellow-500' : 'bg-gray-600'
                 }`}
             >
               <span
                 aria-hidden="true"
-                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isLooping ? 'translate-x-5' : 'translate-x-0'
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${isLooping ? 'translate-x-5' : 'translate-x-0'
                   }`}
               />
             </button>

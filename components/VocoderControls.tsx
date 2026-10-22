@@ -26,7 +26,7 @@ const ParamSlider: React.FC<{
             <label htmlFor={id} className="text-xs text-gray-400 font-medium">
                 {label}
             </label>
-            <span className="text-xs font-mono bg-gray-700 text-white px-1.5 py-0.5 rounded">
+            <span className="text-xs font-mono bg-gray-700 text-white px-1.5 py-0.5 rounded-sm">
                 {value.toFixed(2)} {unit}
             </span>
         </div>
@@ -69,12 +69,12 @@ const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, on
                         onClick={() => onParamChange('enabled', !params.enabled)}
                         role="switch"
                         aria-checked={params.enabled}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${params.enabled ? 'bg-yellow-500' : 'bg-gray-600'
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${params.enabled ? 'bg-yellow-500' : 'bg-gray-600'
                             }`}
                     >
                         <span
                             aria-hidden="true"
-                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${params.enabled ? 'translate-x-5' : 'translate-x-0'
+                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${params.enabled ? 'translate-x-5' : 'translate-x-0'
                                 }`}
                         />
                     </button>
@@ -82,8 +82,8 @@ const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, on
                 <div className="flex items-center gap-2">
                     <label className="text-xs text-gray-400 font-medium">Type:</label>
                     <div className="flex gap-2" role="group">
-                        <button onClick={() => onVocoderTypeChange('original')} disabled={!params.enabled} className={`text-xs font-semibold px-3 py-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${vocoderType === 'original' ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 hover:bg-gray-600'}`}>Original</button>
-                        <button onClick={() => onVocoderTypeChange('new')} disabled={!params.enabled} className={`text-xs font-semibold px-3 py-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${vocoderType === 'new' ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 hover:bg-gray-600'}`}>New</button>
+                        <button onClick={() => onVocoderTypeChange('original')} disabled={!params.enabled} className={`text-xs font-semibold px-3 py-1 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${vocoderType === 'original' ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 hover:bg-gray-600'}`}>Original</button>
+                        <button onClick={() => onVocoderTypeChange('new')} disabled={!params.enabled} className={`text-xs font-semibold px-3 py-1 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${vocoderType === 'new' ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 hover:bg-gray-600'}`}>New</button>
                     </div>
                 </div>
             </div>
@@ -98,7 +98,7 @@ const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, on
                                     key={id}
                                     onClick={() => onParamChange('carrier', id)}
                                     disabled={!params.enabled}
-                                    className={`text-xs font-semibold flex-1 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${params.carrier === id ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 hover:bg-gray-600'}`}
+                                    className={`text-xs font-semibold flex-1 py-2 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${params.carrier === id ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 hover:bg-gray-600'}`}
                                 >
                                     {label}
                                 </button>
@@ -122,7 +122,7 @@ const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, on
 
                 <div className="flex flex-col items-center">
                     <label className="text-xs text-gray-400 font-medium mb-1">Mic In</label>
-                    <div className="w-16 h-24 bg-gray-900 rounded border border-gray-700">
+                    <div className="w-16 h-24 bg-gray-900 rounded-sm border border-gray-700">
                         <canvas ref={canvasRef} width="64" height="96" className="w-full h-full"></canvas>
                     </div>
                 </div>

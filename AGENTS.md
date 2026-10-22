@@ -19,7 +19,7 @@ Architecture:
 Build & Dev:
 - Dev server: `http://0.0.0.0:3000` (not Vite default 5173)
 - `@/` path alias resolves to project root
-- Tailwind CSS v3 built locally via PostCSS (`tailwind.config.js`, `index.css`); production builds inject a strict CSP
+- Tailwind CSS v4 built locally via `@tailwindcss/vite` (config in `index.css`); production builds inject a strict CSP
 - `electron.cjs` is CommonJS (rest of project is ESM). `easymidi` is Node-only (used by `electron-slave.js`)
 - PWA via `vite-plugin-pwa` with `autoUpdate`, offline-capable
 

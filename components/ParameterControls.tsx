@@ -19,7 +19,7 @@ const ParamSlider: React.FC<{
             <label htmlFor={id} className="text-xs text-gray-400 font-medium">
                 {def.label}
             </label>
-            <span className="text-xs font-mono bg-gray-700 text-white px-1.5 py-0.5 rounded">
+            <span className="text-xs font-mono bg-gray-700 text-white px-1.5 py-0.5 rounded-sm">
                 {value.toFixed(2)}
             </span>
         </div>

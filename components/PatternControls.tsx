@@ -44,7 +44,7 @@ const PatternControls: React.FC<PatternControlsProps> = React.memo(({
                         const hasData = pattern !== null;
                         const isCurrentlyPlaying = isSelected && isPlaying;
 
-                        const baseClasses = "relative w-12 h-10 rounded-md font-bold text-lg transition-all duration-150 focus:outline-none";
+                        const baseClasses = "relative w-12 h-10 rounded-md font-bold text-lg transition-all duration-150 focus:outline-hidden";
                         let stateClasses = "bg-gray-700 text-gray-400 hover:bg-gray-600";
                         if (hasData) {
                             stateClasses = "bg-gray-600 text-white hover:bg-gray-500";
