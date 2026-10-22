@@ -252,8 +252,13 @@ export const getInitialBasslinePattern = (steps: number): BasslinePattern => ({
 export const INITIAL_VOCODER_PARAMS: VocoderParams = {
   enabled: false,
   carrier: 'synth',
-  mix: 0.5,
-  bands: 16,
+  mix: 1, // fully wet: dry mic in the mix feeds back through speakers
   formantShift: 0,
   synthPitch: 48, // C3
+  voiceGain: 30,
+  noiseGate: 5,
+  attack: 0.003,
+  release: 0.03,
+  sibilance: 0.5,
+  qFactor: 5,
 };

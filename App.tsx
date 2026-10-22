@@ -7,7 +7,7 @@ import SongSequencer from './components/SongSequencer';
 import BasslineSequencer from './components/BasslineSequencer';
 import VocoderControls from './components/VocoderControls';
 import MidiOutputSelector from './components/MidiOutputSelector';
-import { Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Waveform, VocoderParams, VocoderType, TimeSignature } from './types';
+import { Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Waveform, VocoderParams, TimeSignature } from './types';
 import { INITIAL_VOCODER_PARAMS } from './constants';
 import { audioEngine } from './services/audioService';
 import { NUM_PATTERNS, SONG_STEPS, stepsFromTimeSig, resizeSequence, emptyBasslineStep, createDefaultPattern, createDefaultProject, parseProjectData, serializeProject } from './services/projectIO';
@@ -28,7 +28,6 @@ const App: React.FC = () => {
 
   const [masterVolume, setMasterVolume] = useState<number>(0.7);
 
-  const [vocoderType, setVocoderType] = useState<VocoderType>('original');
   const [vocoderParams, setVocoderParams] = useState<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
 
   // --- Derived State ---
@@ -374,10 +373,9 @@ const App: React.FC = () => {
     }
   }, [vocoderParams, setVocoderParams, audioEngine]);
 
-  const handleVocoderTypeChange = useCallback((type: VocoderType) => {
-    setVocoderType(type);
-    audioEngine.setVocoderType(type);
-  }, [setVocoderType, audioEngine]);
+  // Stable references so the memoised VocoderControls doesn't restart the visualizer on every render
+  const startMicVisualizer = useCallback((canvas: HTMLCanvasElement) => audioEngine.startMicVisualizer(canvas), [audioEngine]);
+  const stopMicVisualizer = useCallback(() => audioEngine.stopMicVisualizer(), [audioEngine]);
 
   const handleBasslineNoteClick = useCallback((stepIndex: number, note: number) => {
     updateCurrentPattern(p => {
@@ -429,10 +427,8 @@ const App: React.FC = () => {
               <VocoderControls
                 params={vocoderParams}
                 onParamChange={handleVocoderParamChange}
-                vocoderType={vocoderType}
-                onVocoderTypeChange={handleVocoderTypeChange}
-                startVisualizer={(canvas) => audioEngine.startMicVisualizer(canvas)}
-                stopVisualizer={() => audioEngine.stopMicVisualizer()}
+                startVisualizer={startMicVisualizer}
+                stopVisualizer={stopMicVisualizer}
               />
             </>
           )}

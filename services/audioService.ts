@@ -1,4 +1,4 @@
-import { Velocity, InstrumentParams, BasslineStep, BasslineParams, VocoderParams, VocoderType, Instrument, BasslinePattern } from '../types';
+import { Velocity, InstrumentParams, BasslineStep, BasslineParams, VocoderParams, Instrument, BasslinePattern } from '../types';
 import { playInstrument, BasslineSynth, midiToFreq } from './synthesis';
 import { MidiService } from './MidiService';
 
@@ -204,10 +204,6 @@ export class AudioEngine {
         }
     }
 
-    public setVocoderType(type: VocoderType) {
-        // Placeholder for future logic if multiple worklets are used
-    }
-
     private setupEffects = async () => {
         if (!this.audioContext || !this.masterGain) return;
 
@@ -322,7 +318,8 @@ export class AudioEngine {
             if (this.micStream) return;
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false }
+                    // Noise suppression adds latency and smears the voice; the vocoder has its own noise gate
+                    audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false }
                 });
                 this.micStream = stream;
                 this.micSource = this.audioContext.createMediaStreamSource(this.micStream);
@@ -363,13 +360,13 @@ export class AudioEngine {
         const now = this.audioContext.currentTime;
         const p = this.vocoderWorkletNode.parameters;
 
-        p.get('voiceGain')?.setTargetAtTime(params.voiceGain ?? 30, now, 0.01);
-        p.get('noiseGate')?.setTargetAtTime(params.noiseGate ?? 5, now, 0.01);
-        p.get('attack')?.setTargetAtTime(params.attack ?? 0.003, now, 0.01);
-        p.get('release')?.setTargetAtTime(params.release ?? 0.03, now, 0.01);
-        p.get('sibilance')?.setTargetAtTime(params.sibilance ?? 0.5, now, 0.01);
+        p.get('voiceGain')?.setTargetAtTime(params.voiceGain, now, 0.01);
+        p.get('noiseGate')?.setTargetAtTime(params.noiseGate, now, 0.01);
+        p.get('attack')?.setTargetAtTime(params.attack, now, 0.01);
+        p.get('release')?.setTargetAtTime(params.release, now, 0.01);
+        p.get('sibilance')?.setTargetAtTime(params.sibilance, now, 0.01);
         p.get('dryWet')?.setTargetAtTime(params.mix, now, 0.01);
-        p.get('qFactor')?.setTargetAtTime(params.qFactor ?? 5, now, 0.01);
+        p.get('qFactor')?.setTargetAtTime(params.qFactor, now, 0.01);
         p.get('carrierFreq')?.setTargetAtTime(midiToFreq(params.synthPitch), now, 0.01);
         p.get('formantShift')?.setTargetAtTime(params.formantShift, now, 0.01);
 
