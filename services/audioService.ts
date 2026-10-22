@@ -35,6 +35,7 @@ export class AudioEngine {
     private vocoderWorkletNode: AudioWorkletNode | null = null;
     private carrierInput: GainNode | null = null;
     private vocoderEnabled = false;
+    private vocoderParams: VocoderParams | null = null;
     private basslineSynth: BasslineSynth;
 
     private micStream: MediaStream | null = null;
@@ -187,6 +188,7 @@ export class AudioEngine {
                 outputChannelCount: [1],
                 processorOptions: { sampleRate: this.audioContext.sampleRate }
             });
+            this.applyVocoderParams();
 
             console.log("Vocoder AudioWorklet initialized.");
         } catch (e) {
@@ -341,7 +343,14 @@ export class AudioEngine {
     };
 
     public updateVocoderParams(params: VocoderParams) {
-        if (!this.isInitialized || !this.vocoderWorkletNode || !this.audioContext) return;
+        // Keep the latest params so they can be applied once the worklet exists
+        this.vocoderParams = params;
+        this.applyVocoderParams();
+    }
+
+    private applyVocoderParams() {
+        const params = this.vocoderParams;
+        if (!params || !this.vocoderWorkletNode || !this.audioContext) return;
 
         const now = this.audioContext.currentTime;
         const p = this.vocoderWorkletNode.parameters;
@@ -489,7 +498,7 @@ export class AudioEngine {
         this.scheduleNextSteps();
     }
 
-    public stop() {
+    public stop(midiStopTime?: number) {
         this.isRunning = false;
         if (this.lookaheadTimerId !== null) {
             clearTimeout(this.lookaheadTimerId);
@@ -498,7 +507,7 @@ export class AudioEngine {
 
         this.stopAllSounds();
         this.startMessageSent = false;
-        this.midiService.sendStop();
+        this.midiService.sendStop(midiStopTime);
 
         this.currentStep = 0;
         this.nextStepTime = 0.0;
@@ -516,10 +525,8 @@ export class AudioEngine {
 
     public updateTempo(newTempo: number) {
         this.tempo = newTempo;
-        // In a perfect drift-free implementation, changing tempo requires 
-        // re-anchoring at the moment of change. For now, we accept simple update
-        // as drift is corrected relative to start, but tempo changes might introduce phase shift.
-        // TODO: Implement sophisticated tempo ramp handling if needed.
+        // No re-anchoring needed: MIDI tick times are derived from the audio-clock
+        // step times, so they follow tempo changes without drift.
     }
 
     public updateSwing(newSwing: number) {
@@ -586,12 +593,13 @@ export class AudioEngine {
             // Check for pattern transition at the end of the sequence
             if (this.currentStep === this.stepsPerSequence - 1) {
                 if (this.stopAtEndOfPattern) {
-                    this.stop();
-                    // We need to notify the UI that playback stopped.
-                    // The stepCallback might have already fired for the last step.
-                    // But we usually have an onPlaybackEnd callback in SequencerEngine.
-                    // SequencerEngine will see stop() state eventually?
-                    // Actually, AudioEngine.stop() clears everything.
+                    // The last step is only scheduled here, it hasn't sounded yet.
+                    // Stop when it ends instead of now, so it isn't cut off and
+                    // the MIDI Stop lands after the last clock tick.
+                    const endTime = this.nextStepTime;
+                    const midiStopTime = this.anchorPerfTime + ((endTime - this.anchorAudioTime) * 1000) + (outputLatency * 1000);
+                    const delayMs = Math.max(0, (endTime - this.audioContext.currentTime) * 1000);
+                    this.lookaheadTimerId = window.setTimeout(() => this.stop(midiStopTime), delayMs);
                     return;
                 }
 

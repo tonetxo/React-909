@@ -13,25 +13,24 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      // Add this to allow loading local files
-      webSecurity: false,
-      // Enable this to allow mixed content if needed
-      allowRunningInsecureContent: true,
+      // The renderer is a plain web app: no Node access needed.
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
       // Add preload script if needed in the future
       // preload: path.join(__dirname, 'preload.cjs'),
     },
   });
 
-  // Grant MIDI permissions
-  mainWindow.webContents.session.on('request-permission', (webContents, permission, callback) => {
-    if (permission === 'midi' || permission === 'midiSysex') {
-      callback(true);
-    } else {
-      callback(false);
-    }
+  // Only grant what the app uses: MIDI output and the microphone (vocoder).
+  // Without a handler Electron grants every permission by default.
+  // Electron reports every Web MIDI request as 'midiSysex', even without sysex.
+  const allowedPermissions = new Set(['midi', 'midiSysex', 'media']);
+  const session = mainWindow.webContents.session;
+  session.setPermissionRequestHandler((webContents, permission, callback) => {
+    callback(allowedPermissions.has(permission));
   });
+  session.setPermissionCheckHandler((webContents, permission) => allowedPermissions.has(permission));
 
   // and load the index.html of the app.
   if (isDev) {

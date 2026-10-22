@@ -15,7 +15,7 @@ export class MidiService {
         }
 
         try {
-            this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+            this.midiAccess = await navigator.requestMIDIAccess();
             console.log("MIDI Access granted.");
             this.listMidiOutputs();
 
@@ -83,7 +83,7 @@ export class MidiService {
         }
     }
 
-    public sendStop(): void {
+    public sendStop(timestamp?: number): void {
         if (!this.midiOutput) {
             console.warn("No MIDI output available, cannot send MIDI Stop message");
             return;
@@ -94,18 +94,13 @@ export class MidiService {
 
         // Send stop message to reset slave state
         try {
-            // Send immediate stop message
-            this.midiOutput.send([0xFC]);
+            // Stop at the given time (performance.now() base), or immediately
+            const stopTime = timestamp ?? performance.now();
+            this.midiOutput.send([0xFC], stopTime);
 
-            // Send a few more clocks to ensure the slave properly processes the stop
-            // This helps clear any pending clock messages in the buffer
-            setTimeout(() => {
-                if (this.midiOutput) this.midiOutput.send([0xFC]);
-            }, 5);
-
-            setTimeout(() => {
-                if (this.midiOutput) this.midiOutput.send([0xFC]);
-            }, 10);
+            // Repeat the Stop a couple of times so the slave reliably processes it
+            this.midiOutput.send([0xFC], stopTime + 5);
+            this.midiOutput.send([0xFC], stopTime + 10);
 
         } catch (e) {
             console.warn("Failed to send stop message:", e);

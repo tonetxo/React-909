@@ -43,7 +43,7 @@ fi
 
 # 5. Check MidiService stop sequence
 echo "Checking MidiService..."
-if grep -A 15 "sendStop()" ./services/MidiService.ts | grep -q "0xFC"; then
+if grep -A 15 "sendStop(" ./services/MidiService.ts | grep -q "0xFC"; then
     echo "✓ MidiService has MIDI Stop command"
 else
     echo "✗ MidiService missing MIDI Stop command"

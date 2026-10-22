@@ -19,7 +19,6 @@ Build & Dev:
 - Dev server: `http://0.0.0.0:3000` (not Vite default 5173)
 - `@/` path alias resolves to project root
 - Tailwind CSS loaded via CDN in `index.html` — no PostCSS/build step, no tailwind.config
-- `GEMINI_API_KEY` injected at build time via Vite `define`; set as env var or in `.env`
 - `electron.cjs` is CommonJS (rest of project is ESM). `easymidi` is Node-only (used by `electron-slave.js`)
 - PWA via `vite-plugin-pwa` with `autoUpdate`, offline-capable
 

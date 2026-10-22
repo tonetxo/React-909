@@ -428,7 +428,13 @@ const App: React.FC = () => {
     reader.readAsText(file);
   }, [setPatterns, setSongSequence, setIsSongLooping, setTimeSignature, setSelectedPatternIndex, setIsSongModeActive]);
 
-  const handleToggleSongMode = useCallback(() => { if (isPlaying) setIsPlaying(false); setIsSongModeActive(prev => !prev); }, [isPlaying, setIsPlaying, setIsSongModeActive]);
+  const handleToggleSongMode = useCallback(() => {
+    if (isPlaying) {
+      sequencerEngine.stop();
+      setIsPlaying(false);
+    }
+    setIsSongModeActive(prev => !prev);
+  }, [isPlaying, sequencerEngine, setIsPlaying, setIsSongModeActive]);
   const handleToggleSongLoop = useCallback(() => {
     const newLoopingState = !isSongLooping;
     setIsSongLooping(newLoopingState);
@@ -455,7 +461,10 @@ const App: React.FC = () => {
   }, [setSongSequence]);
 
   const handleReset = useCallback(() => {
-    if (isPlaying) setIsPlaying(false);
+    if (isPlaying) {
+      sequencerEngine.stop();
+      setIsPlaying(false);
+    }
     setTimeSignature([4, 4]);
     setPatterns(Array(NUM_PATTERNS).fill(null).map(() => mergePatternData(null, [4, 4], 16)));
     setSelectedPatternIndex(0);
@@ -466,7 +475,7 @@ const App: React.FC = () => {
     setIsSongLooping(false);
     localStorage.removeItem(PROJECT_STORAGE_KEY);
     alert("Application state reset to defaults!");
-  }, [isPlaying, setIsPlaying, setTimeSignature, setPatterns, setSelectedPatternIndex, setClipboard, setVocoderParams, setIsSongModeActive, setSongSequence, setIsSongLooping]);
+  }, [isPlaying, sequencerEngine, setIsPlaying, setTimeSignature, setPatterns, setSelectedPatternIndex, setClipboard, setVocoderParams, setIsSongModeActive, setSongSequence, setIsSongLooping]);
 
   // --- MIDI Output Handlers ---
   const handleMidiOutputChange = useCallback((outputName: string) => {
