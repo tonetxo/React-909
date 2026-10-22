@@ -1,7 +1,7 @@
 // services/vocoder-processor.js
 //
 // Channel vocoder: the mic (modulator, input 0) is split into bands, and each band's envelope
-// is imposed on the same band of the carrier: either the internal oscillator or input 1
+// is imposed on the same band of the carrier: either the internal polyphonic synth or input 1
 // (the app routes the drum and/or bass buses there).
 // The per-sample band loop works on flat typed arrays: it runs NUM_BANDS * 4 biquads per sample.
 
@@ -20,14 +20,21 @@ const NOISE_FADE_END = 5000;
 const NOISE_LEVEL = 0.3;
 
 const DENORMAL_LIMIT = 1e-15;
+// Internal synth carrier normaliser: a slow envelope doesn't follow the beating between chord notes
+// that share a band (which would distort chords); the fast envelope, half-weighted, still caps the
+// boost when a note starts in a band that was silent. External carriers use the fast envelope alone.
+const SLOW_ATTACK = 0.1;
+const SLOW_RELEASE = 0.5;
+const FAST_WEIGHT = 0.5;
 
-// Smoother waveforms come out louder: after per-band normalisation every band carries the same
-// few harmonics, which add up coherently. Trims (measured with speech) level them with the saw.
+// Output trims for the internal synth, measured with speech so every waveform matches the external
+// carriers' level. Smoother waveforms need more: after per-band normalisation every band carries the
+// same few harmonics, which add up coherently.
 const WAVEFORM_TRIM = {
-    sawtooth: 1,
-    square: Math.pow(10, -2.1 / 20),
-    triangle: Math.pow(10, -3.1 / 20),
-    sine: Math.pow(10, -4.4 / 20),
+    sawtooth: Math.pow(10, -3.4 / 20),
+    square: Math.pow(10, -4.7 / 20),
+    triangle: Math.pow(10, -4.9 / 20),
+    sine: Math.pow(10, -5.0 / 20),
 };
 
 const timeToCoeff = (seconds) => 1 - Math.exp(-1 / (sampleRate * seconds));
@@ -88,6 +95,66 @@ class Oscillator {
     }
 }
 
+const MAX_SYNTH_VOICES = 4;
+const midiToFreq = (note) => 440 * Math.pow(2, (note - 69) / 12);
+
+// Internal carrier: up to MAX_SYNTH_VOICES oscillators, one per held note. Each voice ramps its
+// gain in and out (no clicks), and a held note keeps its voice so its phase stays continuous.
+class PolySynth {
+    constructor() {
+        this.voices = Array.from({ length: MAX_SYNTH_VOICES }, () => ({ osc: new Oscillator(), note: -1, gain: 0, target: 0 }));
+        this.attackCoeff = timeToCoeff(0.003);
+        this.releaseCoeff = timeToCoeff(0.03);
+        this.level = 1;
+        this.setNotes([45]); // A2 (110 Hz) until the app sends notes
+        this.voices[0].gain = 1;
+    }
+
+    get type() {
+        return this.voices[0].osc.type;
+    }
+
+    set type(type) {
+        for (const voice of this.voices) voice.osc.type = type;
+    }
+
+    setNotes(notes) {
+        const wanted = [...new Set(notes)].slice(0, MAX_SYNTH_VOICES);
+        // Keep voices whose note is still wanted, release the rest
+        for (const voice of this.voices) {
+            if (voice.target === 0) continue;
+            const index = wanted.indexOf(voice.note);
+            if (index >= 0) wanted.splice(index, 1);
+            else voice.target = 0;
+        }
+        // New notes take the quietest released voice
+        for (const note of wanted) {
+            let free = null;
+            for (const voice of this.voices) if (voice.target === 0 && (!free || voice.gain < free.gain)) free = voice;
+            free.note = note;
+            free.osc.frequency = midiToFreq(note);
+            free.target = 1;
+        }
+        // Keep the summed tone at a similar level next to the sibilance noise, whatever the chord size
+        const active = this.voices.filter(voice => voice.target === 1).length;
+        this.level = 1 / Math.sqrt(Math.max(active, 1));
+    }
+
+    process() {
+        let sum = 0;
+        for (const voice of this.voices) {
+            if (voice.target === 0 && voice.gain === 0) continue;
+            voice.gain += (voice.target - voice.gain) * (voice.target > voice.gain ? this.attackCoeff : this.releaseCoeff);
+            if (voice.target === 0 && voice.gain < 1e-4) {
+                voice.gain = 0;
+                continue;
+            }
+            sum += voice.osc.process() * voice.gain;
+        }
+        return sum * this.level;
+    }
+}
+
 // 2nd-order Butterworth highpass, removes rumble and DC from the mic before analysis
 class Highpass {
     constructor(freq) {
@@ -124,7 +191,6 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
             { name: 'sibilance', defaultValue: 0.5, minValue: 0, maxValue: 1 },
             { name: 'dryWet', defaultValue: 1.0, minValue: 0, maxValue: 1 },
             { name: 'qFactor', defaultValue: 5, minValue: 1, maxValue: 12 },
-            { name: 'carrierFreq', defaultValue: 110, minValue: 30, maxValue: 1100 },
             // Semitones: moves the carrier bands relative to the modulator bands (voice size/timbre)
             { name: 'formantShift', defaultValue: 0, minValue: -12, maxValue: 12 },
             // 0..1 multiplier on the vocoded output, automated by the app for the key gate (a-rate: smooth ramps)
@@ -134,7 +200,7 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
 
     constructor() {
         super();
-        this.carrierOsc = new Oscillator();
+        this.carrierSynth = new PolySynth();
         this.useExternalCarrier = false;
         this.modulatorHighpass = new Highpass(70);
 
@@ -152,6 +218,7 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
         this.modulatorLevels = new Float64Array(NUM_BANDS);
         this.modulatorSmoothed = new Float64Array(NUM_BANDS);
         this.carrierLevels = new Float64Array(NUM_BANDS);
+        this.carrierSlowLevels = new Float64Array(NUM_BANDS);
         this.noiseWeights = new Float64Array(NUM_BANDS);
 
         const ratio = Math.pow(MAX_BAND_FREQ / MIN_BAND_FREQ, 1 / (NUM_BANDS - 1));
@@ -174,6 +241,8 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
         // Fixed time constants for the carrier normaliser, input level and gate
         this.carrierAttackCoeff = timeToCoeff(0.002);
         this.carrierReleaseCoeff = timeToCoeff(0.1);
+        this.carrierSlowAttackCoeff = timeToCoeff(SLOW_ATTACK);
+        this.carrierSlowReleaseCoeff = timeToCoeff(SLOW_RELEASE);
         this.inputAttackCoeff = timeToCoeff(0.001);
         this.inputReleaseCoeff = timeToCoeff(0.05);
         this.gateOpenCoeff = timeToCoeff(0.002);
@@ -181,7 +250,9 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
 
         this.port.onmessage = (event) => {
             if (event.data.type === 'SET_CARRIER_WAVEFORM') {
-                this.carrierOsc.type = event.data.value;
+                this.carrierSynth.type = event.data.value;
+            } else if (event.data.type === 'SET_SYNTH_NOTES') {
+                this.carrierSynth.setNotes(event.data.value);
             } else if (event.data.type === 'SET_CARRIER_SOURCE') {
                 this.useExternalCarrier = event.data.value === 'external';
             }
@@ -209,6 +280,7 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
             if (this.modulatorLevels[j] < DENORMAL_LIMIT) this.modulatorLevels[j] = 0;
             if (this.modulatorSmoothed[j] < DENORMAL_LIMIT) this.modulatorSmoothed[j] = 0;
             if (this.carrierLevels[j] < DENORMAL_LIMIT) this.carrierLevels[j] = 0;
+            if (this.carrierSlowLevels[j] < DENORMAL_LIMIT) this.carrierSlowLevels[j] = 0;
         }
         if (this.inputLevel < DENORMAL_LIMIT) this.inputLevel = 0;
         if (this.gateGain < DENORMAL_LIMIT) this.gateGain = 0;
@@ -231,7 +303,6 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
         const noiseAmount = parameters.sibilance[0] * NOISE_LEVEL;
         const dryWet = parameters.dryWet[0];
         const qFactor = parameters.qFactor[0];
-        this.carrierOsc.frequency = parameters.carrierFreq[0];
 
         const formantShift = parameters.formantShift[0];
         if (qFactor !== this.lastQFactor || formantShift !== this.lastFormantShift) {
@@ -248,10 +319,13 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
             this.lastRelease = release;
         }
 
-        const { b0, a1, a2, carrierB0, carrierA1, carrierA2, filterState: s, modulatorLevels, modulatorSmoothed, carrierLevels, noiseWeights } = this;
+        const { b0, a1, a2, carrierB0, carrierA1, carrierA2, filterState: s, modulatorLevels, modulatorSmoothed, carrierLevels, carrierSlowLevels, noiseWeights } = this;
+        const slowAttackCoeff = this.carrierSlowAttackCoeff, slowReleaseCoeff = this.carrierSlowReleaseCoeff;
+        const fastWeight = this.useExternalCarrier ? 1 : FAST_WEIGHT;
+        const useSlow = !this.useExternalCarrier;
         const attackCoeff = this.attackCoeff, releaseCoeff = this.releaseCoeff;
         const carrierAttackCoeff = this.carrierAttackCoeff, carrierReleaseCoeff = this.carrierReleaseCoeff;
-        const carrierTrim = this.useExternalCarrier ? 1 : WAVEFORM_TRIM[this.carrierOsc.type] ?? 1;
+        const carrierTrim = this.useExternalCarrier ? 1 : WAVEFORM_TRIM[this.carrierSynth.type] ?? 1;
         const bandGain = voiceGain * OUTPUT_GAIN * carrierTrim;
         const keyGate = parameters.keyGate;
 
@@ -260,7 +334,7 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
             const modulatorSample = this.modulatorHighpass.process(drySample);
             const oscSample = this.useExternalCarrier
                 ? (externalCarrier ? externalCarrier[i] : 0)
-                : this.carrierOsc.process();
+                : this.carrierSynth.process();
             const noiseSample = noiseAmount > 0 ? (Math.random() * 2 - 1) * noiseAmount : 0;
 
             let wetSignal = 0;
@@ -296,8 +370,15 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
                 let carrierEnv = carrierLevels[j];
                 carrierEnv += (level - carrierEnv) * (level > carrierEnv ? carrierAttackCoeff : carrierReleaseCoeff);
                 carrierLevels[j] = carrierEnv;
+                let divisor = carrierEnv * fastWeight;
+                if (useSlow) {
+                    let slowEnv = carrierSlowLevels[j];
+                    slowEnv += (level - slowEnv) * (level > slowEnv ? slowAttackCoeff : slowReleaseCoeff);
+                    carrierSlowLevels[j] = slowEnv;
+                    if (slowEnv > divisor) divisor = slowEnv;
+                }
 
-                wetSignal += y / (carrierEnv > CARRIER_NORM_FLOOR ? carrierEnv : CARRIER_NORM_FLOOR) * smoothed;
+                wetSignal += y / (divisor > CARRIER_NORM_FLOOR ? divisor : CARRIER_NORM_FLOOR) * smoothed;
             }
 
             // Noise gate with hysteresis on the smoothed input level, so it doesn't chatter

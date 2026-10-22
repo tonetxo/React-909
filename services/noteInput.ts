@@ -22,6 +22,11 @@ export class HeldNotes {
         this.notes = [];
     }
 
+    /** The `count` most recently pressed held notes, oldest first. */
+    latest(count: number): number[] {
+        return this.notes.slice(-count);
+    }
+
     get isEmpty(): boolean {
         return this.notes.length === 0;
     }

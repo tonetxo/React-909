@@ -8,7 +8,7 @@ import BasslineSequencer from './components/BasslineSequencer';
 import VocoderControls from './components/VocoderControls';
 import MidiPortSelector from './components/MidiPortSelector';
 import { Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Waveform, VocoderParams, TimeSignature } from './types';
-import { INITIAL_VOCODER_PARAMS, SYNTH_PITCH_MIN, SYNTH_PITCH_MAX } from './constants';
+import { INITIAL_VOCODER_PARAMS, SYNTH_PITCH_MIN, SYNTH_PITCH_MAX, MAX_SYNTH_VOICES } from './constants';
 import { audioEngine } from './services/audioService';
 import { ALL_MIDI_INPUTS } from './services/MidiService';
 import { HeldNotes, fitToRange, pcKeyToNote, PC_OCTAVE_DOWN, PC_OCTAVE_UP } from './services/noteInput';
@@ -379,27 +379,36 @@ const App: React.FC = () => {
     audioEngine.updateVocoderParams(newParams);
   }, [audioEngine]);
 
-  // Held keys per source; the vocoder key gate is open while any of them holds a note
-  const midiHeldRef = useRef(new HeldNotes());
-  const pcHeldRef = useRef(new HeldNotes());
-  const updateNoteKeyHeld = useCallback(() => {
-    audioEngine.setNoteKeyHeld(!midiHeldRef.current.isEmpty || !pcHeldRef.current.isEmpty);
+  // Held note keys from MIDI and the PC keyboard together. The latest one sets Synth Pitch; the synth
+  // plays the latest MAX_SYNTH_VOICES of them (Poly) or just the latest (Mono). With no key held it plays
+  // Synth Pitch, and the key gate (if on) closes.
+  const heldNotesRef = useRef(new HeldNotes());
+  const updateSynthVoices = useCallback(() => {
+    const params = vocoderParamsRef.current;
+    const held = heldNotesRef.current.latest(params.poly ? MAX_SYNTH_VOICES : 1);
+    const notes = held.length > 0 ? held : [params.synthPitch];
+    audioEngine.setSynthNotes(notes.map(note => fitToRange(note, SYNTH_PITCH_MIN, SYNTH_PITCH_MAX)));
+    audioEngine.setNoteKeyHeld(held.length > 0);
   }, [audioEngine]);
 
+  const handleNoteKey = useCallback((note: number, on: boolean) => {
+    const held = heldNotesRef.current;
+    const current = on ? held.press(note) : held.release(note);
+    if (current !== null) setSynthPitch(current);
+    updateSynthVoices();
+  }, [setSynthPitch, updateSynthVoices]);
+
+  useEffect(() => audioEngine.subscribeMidiNotes(({ note, on }) => handleNoteKey(note, on)), [audioEngine, handleNoteKey]);
+
+  // Synth Pitch slider and Mono/Poly changes
   useEffect(() => {
-    const held = midiHeldRef.current;
-    return audioEngine.subscribeMidiNotes(({ note, on }) => {
-      const current = on ? held.press(note) : held.release(note);
-      if (current !== null) setSynthPitch(current);
-      updateNoteKeyHeld();
-    });
-  }, [audioEngine, setSynthPitch, updateNoteKeyHeld]);
+    updateSynthVoices();
+  }, [vocoderParams.synthPitch, vocoderParams.poly, updateSynthVoices]);
 
   const pcKeyboardBaseRef = useRef(pcKeyboardBase);
   pcKeyboardBaseRef.current = pcKeyboardBase;
 
   useEffect(() => {
-    const held = pcHeldRef.current;
     // Note per key code, as pressed: releasing must stop that note even if the octave changed meanwhile
     const pressed = new Map<string, number>();
     const isTyping = (target: EventTarget | null) =>
@@ -415,19 +424,19 @@ const App: React.FC = () => {
       const note = pcKeyToNote(e.code, pcKeyboardBaseRef.current);
       if (note === undefined) return;
       pressed.set(e.code, note);
-      setSynthPitch(held.press(note));
-      updateNoteKeyHeld();
+      handleNoteKey(note, true);
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       const note = pressed.get(e.code);
       if (note === undefined) return;
       pressed.delete(e.code);
-      const current = held.release(note);
-      if (current !== null) setSynthPitch(current);
-      updateNoteKeyHeld();
+      handleNoteKey(note, false);
     };
     // Keys released while the window is unfocused never send keyup
-    const handleBlur = () => { held.clear(); pressed.clear(); updateNoteKeyHeld(); };
+    const handleBlur = () => {
+      pressed.forEach(note => handleNoteKey(note, false));
+      pressed.clear();
+    };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
@@ -437,7 +446,7 @@ const App: React.FC = () => {
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleBlur);
     };
-  }, [setSynthPitch, updateNoteKeyHeld]);
+  }, [handleNoteKey]);
 
   // --- Bassline Handlers ---
   const handleBasslineParamChange = useCallback((param: keyof BasslineParams, value: number | Waveform | boolean) => {

@@ -92,6 +92,7 @@ export interface VocoderParams {
   qFactor: number;
   carrierWaveform: Waveform; // internal synth carrier
   keyGate: boolean; // synth carrier only sounds while a note key is held
+  poly: boolean; // synth carrier plays up to MAX_SYNTH_VOICES held notes (otherwise the last one)
 }
 
 export interface ProjectData {

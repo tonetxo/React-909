@@ -138,6 +138,15 @@ const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, on
 
                     <div className="col-span-2 md:col-span-4 flex items-center gap-3">
                         <button
+                            onClick={() => onParamChange('poly', !params.poly)}
+                            disabled={!params.enabled || params.carrier !== 'synth'}
+                            aria-pressed={params.poly}
+                            title="Poly: ata 4 notas á vez; Mono: só a última nota pulsada"
+                            className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${params.poly ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 hover:bg-gray-600'}`}
+                        >
+                            {params.poly ? 'Poly 4' : 'Mono'}
+                        </button>
+                        <button
                             onClick={() => onParamChange('keyGate', !params.keyGate)}
                             disabled={!params.enabled || params.carrier !== 'synth'}
                             aria-pressed={params.keyGate}

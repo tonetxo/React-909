@@ -1,5 +1,5 @@
 import { Velocity, InstrumentParams, BasslineStep, BasslineParams, VocoderParams, Instrument, BasslinePattern } from '../types';
-import { playInstrument, BasslineSynth, midiToFreq } from './synthesis';
+import { playInstrument, BasslineSynth } from './synthesis';
 import { MidiService } from './MidiService';
 import { NoteMessage } from './noteInput';
 
@@ -41,6 +41,8 @@ export class AudioEngine {
     private bassCarrierGain: GainNode | null = null;
     // Whether a note key (MIDI or PC keyboard) is held, for the vocoder key gate
     private noteKeyHeld = false;
+    // MIDI notes the vocoder's internal synth carrier plays (one per voice)
+    private synthNotes: number[] = [];
     private basslineSynth: BasslineSynth;
 
     private micStream: MediaStream | null = null;
@@ -370,16 +372,21 @@ export class AudioEngine {
         p.get('sibilance')?.setTargetAtTime(params.sibilance, now, 0.01);
         p.get('dryWet')?.setTargetAtTime(params.mix, now, 0.01);
         p.get('qFactor')?.setTargetAtTime(params.qFactor, now, 0.01);
-        p.get('carrierFreq')?.setTargetAtTime(midiToFreq(params.synthPitch), now, 0.01);
         p.get('formantShift')?.setTargetAtTime(params.formantShift, now, 0.01);
 
         const { carrier } = params;
         this.drumCarrierGain?.gain.setTargetAtTime(carrier === 'drums' || carrier === 'both' ? 1 : 0, now, 0.01);
         this.bassCarrierGain?.gain.setTargetAtTime(carrier === 'bass' || carrier === 'both' ? 1 : 0, now, 0.01);
         this.vocoderWorkletNode.port.postMessage({ type: 'SET_CARRIER_SOURCE', value: carrier === 'synth' ? 'internal' : 'external' });
+        this.vocoderWorkletNode.port.postMessage({ type: 'SET_SYNTH_NOTES', value: this.synthNotes });
         this.applyKeyGate();
 
         this.vocoderWorkletNode.port.postMessage({ type: 'SET_CARRIER_WAVEFORM', value: params.carrierWaveform });
+    }
+
+    public setSynthNotes(notes: number[]) {
+        this.synthNotes = notes;
+        this.vocoderWorkletNode?.port.postMessage({ type: 'SET_SYNTH_NOTES', value: notes });
     }
 
     public setNoteKeyHeld(held: boolean) {

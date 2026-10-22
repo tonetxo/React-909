@@ -33,6 +33,15 @@ describe('HeldNotes', () => {
         expect(held.isEmpty).toBe(true);
     });
 
+    it('returns the latest held notes, oldest first', () => {
+        const held = new HeldNotes();
+        [48, 52, 55, 59, 62].forEach(n => held.press(n));
+        expect(held.latest(4)).toEqual([52, 55, 59, 62]);
+        expect(held.latest(1)).toEqual([62]);
+        held.release(59);
+        expect(held.latest(4)).toEqual([48, 52, 55, 62]);
+    });
+
     it('ignores releases of notes that are not held', () => {
         const held = new HeldNotes();
         held.press(60);
