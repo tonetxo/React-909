@@ -1,6 +1,6 @@
 import React from 'react';
 import { BasslinePattern, BasslineParams, Waveform, TimeSignature } from '../types';
-import { BASSLINE_NOTES, BASSLINE_VELOCITY_COLORS } from '../constants';
+import { BASSLINE_NOTES, BASSLINE_VELOCITY_COLORS, WAVEFORMS, WAVEFORM_LABELS } from '../constants';
 
 interface BasslineSequencerProps {
     basslinePattern: BasslinePattern;
@@ -11,8 +11,6 @@ interface BasslineSequencerProps {
     onParamChange: (param: keyof BasslineParams, value: number | Waveform | boolean) => void;
     onControlToggle: (stepIndex: number, control: 'slide' | 'tie') => void;
 }
-
-const WAVEFORMS: Waveform[] = ['sawtooth', 'square', 'sine', 'triangle'];
 
 const ParamSlider: React.FC<{
     id: string;
@@ -63,16 +61,6 @@ const BasslineSequencer: React.FC<BasslineSequencerProps> = React.memo(({
     const synthParams: (keyof BasslineParams)[] = ['cutoff', 'resonance', 'envelopeAmount', 'decay', 'accent'];
     const channelParams: (keyof BasslineParams)[] = ['volume', 'reverbSend', 'delaySend', 'flangerSend'];
 
-    const getWaveformLabel = (wf: Waveform) => {
-        switch (wf) {
-            case 'sawtooth': return 'SAW';
-            case 'square': return 'SQR';
-            case 'sine': return 'SIN';
-            case 'triangle': return 'TRI';
-            default: return '';
-        }
-    };
-
     const handleContextMenu = (event: React.MouseEvent, stepIndex: number) => {
         event.preventDefault();
         onStepClear(stepIndex);
@@ -111,7 +99,7 @@ const BasslineSequencer: React.FC<BasslineSequencerProps> = React.memo(({
                                 <div className="flex gap-1">
                                     {WAVEFORMS.map(wf => (
                                         <button key={wf} onClick={() => onParamChange('waveform', wf)} className={`text-xs font-semibold flex-1 py-1 rounded-sm transition-colors ${params.waveform === wf ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                                            {getWaveformLabel(wf)}
+                                            {WAVEFORM_LABELS[wf]}
                                         </button>
                                     ))}
                                 </div>

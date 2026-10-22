@@ -21,6 +21,15 @@ const NOISE_LEVEL = 0.3;
 
 const DENORMAL_LIMIT = 1e-15;
 
+// Smoother waveforms come out louder: after per-band normalisation every band carries the same
+// few harmonics, which add up coherently. Trims (measured with speech) level them with the saw.
+const WAVEFORM_TRIM = {
+    sawtooth: 1,
+    square: Math.pow(10, -2.1 / 20),
+    triangle: Math.pow(10, -3.1 / 20),
+    sine: Math.pow(10, -4.4 / 20),
+};
+
 const timeToCoeff = (seconds) => 1 - Math.exp(-1 / (sampleRate * seconds));
 
 // Constant 0 dB peak gain bandpass (RBJ cookbook), stored at index j of the coefficient arrays
@@ -240,7 +249,8 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
         const { b0, a1, a2, carrierB0, carrierA1, carrierA2, filterState: s, modulatorLevels, modulatorSmoothed, carrierLevels, noiseWeights } = this;
         const attackCoeff = this.attackCoeff, releaseCoeff = this.releaseCoeff;
         const carrierAttackCoeff = this.carrierAttackCoeff, carrierReleaseCoeff = this.carrierReleaseCoeff;
-        const bandGain = voiceGain * OUTPUT_GAIN;
+        const carrierTrim = this.useExternalCarrier ? 1 : WAVEFORM_TRIM[this.carrierOsc.type] ?? 1;
+        const bandGain = voiceGain * OUTPUT_GAIN * carrierTrim;
 
         for (let i = 0; i < output.length; i++) {
             const drySample = modulatorInput[i];

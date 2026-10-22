@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { VocoderParams, VocoderCarrier } from '../types';
+import { WAVEFORMS, WAVEFORM_LABELS } from '../constants';
 
 interface VocoderControlsProps {
     params: VocoderParams;
@@ -116,6 +117,22 @@ const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, on
                         format={formatNote}
                         disabled={!params.enabled || params.carrier !== 'synth'}
                     />
+
+                    <div className={`flex flex-col ${!params.enabled || params.carrier !== 'synth' ? 'opacity-50' : ''}`}>
+                        <label className="text-xs text-gray-400 font-medium mb-1">Synth Wave</label>
+                        <div className="flex gap-1" role="group">
+                            {WAVEFORMS.map(wf => (
+                                <button
+                                    key={wf}
+                                    onClick={() => onParamChange('carrierWaveform', wf)}
+                                    disabled={!params.enabled || params.carrier !== 'synth'}
+                                    className={`text-xs font-semibold flex-1 py-1 rounded-sm transition-colors disabled:cursor-not-allowed ${params.carrierWaveform === wf ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 hover:bg-gray-600'}`}
+                                >
+                                    {WAVEFORM_LABELS[wf]}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex flex-col items-center">

@@ -1,4 +1,7 @@
-import { Instrument, Velocity, BasslinePattern, ParamDefinition, VocoderParams } from './types';
+import { Instrument, Velocity, BasslinePattern, ParamDefinition, VocoderParams, Waveform } from './types';
+
+export const WAVEFORMS: Waveform[] = ['sawtooth', 'square', 'sine', 'triangle'];
+export const WAVEFORM_LABELS: Record<Waveform, string> = { sawtooth: 'SAW', square: 'SQR', sine: 'SIN', triangle: 'TRI' };
 
 export const INITIAL_TEMPO = 120;
 export const INITIAL_SWING = 0;
@@ -255,6 +258,7 @@ export const INITIAL_VOCODER_PARAMS: VocoderParams = {
   mix: 1, // fully wet: dry mic in the mix feeds back through speakers
   formantShift: 0,
   synthPitch: 48, // C3
+  carrierWaveform: 'sawtooth',
   voiceGain: 30,
   noiseGate: 5,
   attack: 0.003,

@@ -90,7 +90,7 @@ export interface VocoderParams {
   release: number; // seconds
   sibilance: number;
   qFactor: number;
-  carrierWaveform?: Waveform;
+  carrierWaveform: Waveform; // internal synth carrier
 }
 
 export interface ProjectData {

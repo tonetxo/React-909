@@ -375,9 +375,7 @@ export class AudioEngine {
         this.bassCarrierGain?.gain.setTargetAtTime(carrier === 'bass' || carrier === 'both' ? 1 : 0, now, 0.01);
         this.vocoderWorkletNode.port.postMessage({ type: 'SET_CARRIER_SOURCE', value: carrier === 'synth' ? 'internal' : 'external' });
 
-        if (params.carrierWaveform) {
-            this.vocoderWorkletNode.port.postMessage({ type: 'SET_CARRIER_WAVEFORM', value: params.carrierWaveform });
-        }
+        this.vocoderWorkletNode.port.postMessage({ type: 'SET_CARRIER_WAVEFORM', value: params.carrierWaveform });
     }
 
     public startMicVisualizer(canvas: HTMLCanvasElement) {
