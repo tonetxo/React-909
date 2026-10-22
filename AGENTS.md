@@ -14,7 +14,7 @@ Architecture:
 - **AudioEngine** singleton (`services/audioService.ts`) manages AudioContext, worklets, bus routing, scheduling
 - **SequencerEngine** (`sequencer/SequencerEngine.ts`) bridges React state and AudioEngine
 - **React state** lives entirely in `App.tsx` (the `state/` dir is empty)
-- AudioWorklet (`vocoder-processor.js`) is a separate Rollup entry with stable output `services/[name].js` (no hash)
+- AudioWorklet (`vocoder-processor.js`) is loaded via `new URL('./vocoder-processor.js', import.meta.url)`, which Vite emits as a hashed asset
 
 Build & Dev:
 - Dev server: `http://0.0.0.0:3000` (not Vite default 5173)

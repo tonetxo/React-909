@@ -71,21 +71,5 @@ export default defineConfig(() => {
         '@': path.resolve(import.meta.dirname, '.'),
       }
     },
-    build: {
-      rollupOptions: {
-        input: {
-          main: path.resolve(import.meta.dirname, 'index.html'),
-          'vocoder-processor': path.resolve(import.meta.dirname, 'services/vocoder-processor.js'),
-        },
-        output: {
-          entryFileNames: (chunkInfo) => {
-            if (chunkInfo.name === 'vocoder-processor') {
-              return `services/[name].js`;
-            }
-            return `assets/[name]-[hash].js`;
-          },
-        },
-      },
-    }
   };
 });
