@@ -132,10 +132,10 @@ const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, on
                 <h5 className="col-span-full text-xs text-gray-400 font-medium border-b border-gray-700 pb-1 mb-1">New Vocoder Settings</h5>
                 <ParamSlider id="vocoder-voice-gain" label="Voice Gain" min={1} max={100} step={1} value={params.voiceGain ?? 30} onChange={(v) => onParamChange('voiceGain', v)} disabled={vocoderType !== 'new' || !params.enabled} />
                 <ParamSlider id="vocoder-noise-gate" label="Noise Gate" min={0} max={50} step={1} value={params.noiseGate ?? 5} onChange={(v) => onParamChange('noiseGate', v)} disabled={vocoderType !== 'new' || !params.enabled} />
-                <ParamSlider id="vocoder-attack" label="Attack" min={0.001} max={0.1} step={0.001} value={params.attack ?? 0.001} onChange={(v) => onParamChange('attack', v)} unit="s" disabled={vocoderType !== 'new' || !params.enabled} />
+                <ParamSlider id="vocoder-attack" label="Attack" min={0.001} max={0.1} step={0.001} value={params.attack ?? 0.003} onChange={(v) => onParamChange('attack', v)} unit="s" disabled={vocoderType !== 'new' || !params.enabled} />
                 <ParamSlider id="vocoder-release" label="Release" min={0.01} max={0.2} step={0.001} value={params.release ?? 0.03} onChange={(v) => onParamChange('release', v)} unit="s" disabled={vocoderType !== 'new' || !params.enabled} />
-                <ParamSlider id="vocoder-sibilance" label="Sibilance" min={0} max={1} step={0.01} value={params.sibilance ?? 0.2} onChange={(v) => onParamChange('sibilance', v)} disabled={vocoderType !== 'new' || !params.enabled} />
-                <ParamSlider id="vocoder-q-factor" label="Q-Factor" min={1} max={50} step={0.5} value={params.qFactor ?? 20} onChange={(v) => onParamChange('qFactor', v)} disabled={vocoderType !== 'new' || !params.enabled} />
+                <ParamSlider id="vocoder-sibilance" label="Sibilance" min={0} max={1} step={0.01} value={params.sibilance ?? 0.5} onChange={(v) => onParamChange('sibilance', v)} disabled={vocoderType !== 'new' || !params.enabled} />
+                <ParamSlider id="vocoder-q-factor" label="Q-Factor" min={1} max={12} step={0.5} value={params.qFactor ?? 5} onChange={(v) => onParamChange('qFactor', v)} disabled={vocoderType !== 'new' || !params.enabled} />
                 <ParamSlider id="vocoder-carrier-freq" label="Carrier Freq" min={40} max={500} step={1} value={params.carrierFreq ?? 110} onChange={(v) => onParamChange('carrierFreq', v)} unit="Hz" disabled={vocoderType !== 'new' || !params.enabled} />
             </div>
         </div>

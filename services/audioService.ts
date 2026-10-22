@@ -350,11 +350,11 @@ export class AudioEngine {
 
         p.get('voiceGain')?.setTargetAtTime(params.voiceGain ?? 30, now, 0.01);
         p.get('noiseGate')?.setTargetAtTime(params.noiseGate ?? 5, now, 0.01);
-        p.get('attack')?.setTargetAtTime(params.attack ?? 0.001, now, 0.01);
+        p.get('attack')?.setTargetAtTime(params.attack ?? 0.003, now, 0.01);
         p.get('release')?.setTargetAtTime(params.release ?? 0.03, now, 0.01);
-        p.get('sibilance')?.setTargetAtTime(params.sibilance ?? 0.2, now, 0.01);
+        p.get('sibilance')?.setTargetAtTime(params.sibilance ?? 0.5, now, 0.01);
         p.get('dryWet')?.setTargetAtTime(params.mix, now, 0.01);
-        p.get('qFactor')?.setTargetAtTime(params.qFactor ?? 20, now, 0.01);
+        p.get('qFactor')?.setTargetAtTime(params.qFactor ?? 5, now, 0.01);
         p.get('carrierFreq')?.setTargetAtTime(params.carrierFreq ?? 110, now, 0.01);
 
         if (params.carrierWaveform) {
