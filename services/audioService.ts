@@ -1,4 +1,4 @@
-import { Velocity, InstrumentParams, BasslineStep, BasslineParams, VocoderParams, VocoderCarrier, VocoderType, Instrument, BasslinePattern } from '../types';
+import { Velocity, InstrumentParams, BasslineStep, BasslineParams, VocoderParams, VocoderType, Instrument, BasslinePattern } from '../types';
 import { playInstrument, BasslineSynth } from './synthesis';
 import { MidiService } from './MidiService';
 
@@ -33,7 +33,6 @@ export class AudioEngine {
 
     // --- Vocoder ---
     private vocoderWorkletNode: AudioWorkletNode | null = null;
-    private carrierInput: GainNode | null = null;
     private vocoderEnabled = false;
     private vocoderParams: VocoderParams | null = null;
     private basslineSynth: BasslineSynth;
@@ -49,7 +48,6 @@ export class AudioEngine {
     private stepCallback: StepCallback | null = null;
     private onStopCallback: (() => void) | null = null;
     private midiService: MidiService;
-    private startMessageSent: boolean = false;
 
     private isRunning: boolean = false;
     private currentStep: number = 0;
@@ -80,10 +78,6 @@ export class AudioEngine {
     constructor() {
         this.midiService = new MidiService();
         this.basslineSynth = new BasslineSynth();
-    }
-
-    public getAudioContext(): AudioContext | null {
-        return this.audioContext;
     }
 
     public setMasterVolume(value: number) {
@@ -180,7 +174,6 @@ export class AudioEngine {
         if (!this.audioContext) return;
         try {
             await this.audioContext.audioWorklet.addModule(new URL('./vocoder-processor.js', import.meta.url));
-            this.carrierInput = this.audioContext.createGain();
 
             this.vocoderWorkletNode = new AudioWorkletNode(this.audioContext, 'vocoder-processor-new', {
                 numberOfInputs: 1,
@@ -422,6 +415,15 @@ export class AudioEngine {
         this.midiService.setMidiOutput(outputName);
     }
 
+    public subscribeMidiOutputs = (listener: (outputNames: string[]) => void): (() => void) =>
+        this.midiService.subscribeOutputs(listener);
+
+    /** Seconds to delay MIDI so it lines up with audible output (device latency + manual window.MIDI_LATENCY_OFFSET). */
+    private getMidiLatency(): number {
+        const manualOffset = (window as any).MIDI_LATENCY_OFFSET || 0.0;
+        return (this.audioContext?.outputLatency || 0.0) + manualOffset;
+    }
+
     public setPattern(instruments: Instrument[], bassline: BasslinePattern, stepsPerSequence: number) {
         this.instruments = instruments;
         this.basslinePattern = bassline;
@@ -484,15 +486,13 @@ export class AudioEngine {
         this.anchorAudioTime = startTime;
 
         // Calculate MIDI Start time with latency compensation
-        const manualOffset = (window as any).MIDI_LATENCY_OFFSET || 0.0;
-        const outputLatency = (this.audioContext.outputLatency || 0.0) + manualOffset;
+        const outputLatency = this.getMidiLatency();
 
         // MIDI Start should happen when audio starts physically exiting the device
         const midiStartTime = this.anchorPerfTime + (outputLatency * 1000);
 
         // Send Start 1ms before
         this.midiService.sendStart(midiStartTime - 1.0);
-        this.startMessageSent = true;
 
         this.nextStepTime = startTime;
         this.scheduleNextSteps();
@@ -506,7 +506,6 @@ export class AudioEngine {
         }
 
         this.stopAllSounds();
-        this.startMessageSent = false;
         this.midiService.sendStop(midiStopTime);
 
         this.currentStep = 0;
@@ -539,9 +538,7 @@ export class AudioEngine {
         const stepDuration = 60.0 / this.tempo / 4.0;
         const currentPlayTime = this.audioContext.currentTime;
 
-        // Latency compensation
-        const manualOffset = (window as any).MIDI_LATENCY_OFFSET || 0.0;
-        const outputLatency = (this.audioContext.outputLatency || 0.0) + manualOffset;
+        const outputLatency = this.getMidiLatency();
 
         while (this.nextStepTime < currentPlayTime + this.scheduleAheadTime) {
             // Calculate swing for this step
@@ -646,10 +643,6 @@ export class AudioEngine {
             const nextStep = this.basslinePattern.sequence[(step + 1) % this.stepsPerSequence];
             this.playBasslineNote(stepData, prevStep, nextStep, this.basslinePattern.params, time);
         }
-    }
-
-    public getCurrentStep(): number | null {
-        return this.isRunning ? this.currentStep : null;
     }
 
     public destroy() {

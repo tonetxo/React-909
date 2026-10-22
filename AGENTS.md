@@ -7,18 +7,19 @@ Commands:
 - `npm run preview` — Vite preview of build output
 - `npm run electron:dev` — Launch Electron alone
 - `npm run electron:build` — `vite build && electron-builder`
-- `npx tsc --noEmit` — typecheck (the only static check; no lint/format/test infra exists)
+- `npx tsc --noEmit` — typecheck (`noUnusedLocals` on)
+- `npm test` — Vitest unit tests (`services/projectIO.test.ts`)
 
 Architecture:
 - **AudioEngine** singleton (`services/audioService.ts`) manages AudioContext, worklets, bus routing, scheduling
 - **SequencerEngine** (`sequencer/SequencerEngine.ts`) bridges React state and AudioEngine
 - **React state** lives entirely in `App.tsx` (the `state/` dir is empty)
-- AudioWorklets (`clock-processor.js`, `vocoder-processor.js`) are separate Rollup entries with stable output `services/[name].js` (no hash)
+- AudioWorklet (`vocoder-processor.js`) is a separate Rollup entry with stable output `services/[name].js` (no hash)
 
 Build & Dev:
 - Dev server: `http://0.0.0.0:3000` (not Vite default 5173)
 - `@/` path alias resolves to project root
-- Tailwind CSS loaded via CDN in `index.html` — no PostCSS/build step, no tailwind.config
+- Tailwind CSS v3 built locally via PostCSS (`tailwind.config.js`, `index.css`); production builds inject a strict CSP
 - `electron.cjs` is CommonJS (rest of project is ESM). `easymidi` is Node-only (used by `electron-slave.js`)
 - PWA via `vite-plugin-pwa` with `autoUpdate`, offline-capable
 
@@ -33,9 +34,8 @@ Project Data:
 - `tatus` is a stale git-log artifact, can be ignored
 - `metadata.json` is stale OpenCode metadata, can be ignored
 
-Validation scripts (no test framework):
+Validation scripts:
 - `bash validate-sync-fixes.sh` — checks critical MIDI sync fixes are present
-- `bash validate-improvements.sh` — checks MIDI sync improvements
 - `bash check-midi-clock.sh` — diagnose MIDI clock output
 - `bash cleanup-midi.sh` — kill zombie MIDI slave processes
 

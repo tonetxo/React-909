@@ -20,8 +20,6 @@ export class SequencerEngine {
   private isSongLooping: boolean = false;
   private currentSongStep: number | null = null;
   private callbacks: SequencerCallbacks | null = null;
-  private currentTempo: number = 120;
-  private currentSwing: number = 0;
   private queuedPatternIndex: number | null = null;
   private ignoreFirstStepZero: boolean = false;
 
@@ -174,9 +172,6 @@ export class SequencerEngine {
 
 
   async start(tempo: number, swing: number) {
-    this.currentTempo = tempo;
-    this.currentSwing = swing;
-
     if (this.isPlaying) return;
 
     let patternIndexToPlay = this.currentPatternIndex;
@@ -230,12 +225,8 @@ export class SequencerEngine {
   stop() {
     if (this.isPlaying) {
       this.isPlaying = false;
+      // Callbacks to React are fired by the AudioEngine onStop handler
       this.audioEngine.stop();
-
-      if (this.callbacks) {
-        this.callbacks.onStepChange(null);
-        this.callbacks.onSongStepChange(null);
-      }
     }
   }
 
@@ -289,38 +280,19 @@ export class SequencerEngine {
   }
 
   updateTempo(tempo: number) {
-    this.currentTempo = tempo;
     if (this.isPlaying) {
       this.audioEngine.updateTempo(tempo);
     }
   }
 
   updateSwing(swing: number) {
-    this.currentSwing = swing;
     if (this.isPlaying) {
       this.audioEngine.updateSwing(swing);
     }
   }
 
-  getCurrentPatternIndex(): number {
-    return this.currentPatternIndex;
-  }
-
-  getCurrentStep(): number | null {
-    return this.audioEngine.getCurrentStep();
-  }
-
-  getCurrentSongStep(): number | null {
-    return this.currentSongStep;
-  }
-
   isPlayingState(): boolean {
     return this.isPlaying;
-  }
-
-  destroy() {
-    this.audioEngine.destroy();
-    this.stop();
   }
 
   private getPatternLength(pattern: Pattern): number {

@@ -16,9 +16,7 @@ interface SequencerProps {
   onSoloToggle: (instrumentId: string) => void;
   onParamChange: (instrumentId: string, param: keyof InstrumentParams, value: number) => void;
   onVolumeChange: (instrumentId: string, value: number) => void;
-  onCopyInstrument: (instrumentId: string) => void;
-  onPasteInstrument: (instrumentId: string) => void;
-  onClearInstrument: (instrumentId: string) => void;
+  onInstrumentAction: (instrumentId: string, action: 'copy' | 'paste' | 'clear') => void;
   isInstrumentPasteDisabled: boolean;
 }
 
@@ -34,12 +32,9 @@ const Sequencer: React.FC<SequencerProps> = React.memo(({
   onSoloToggle,
   onParamChange,
   onVolumeChange,
-  onCopyInstrument,
-  onPasteInstrument,
-  onClearInstrument,
+  onInstrumentAction,
   isInstrumentPasteDisabled,
 }) => {
-  const stepsPerBeat = timeSignature[1] === 8 ? 3 : 4;
   const beatsPerMeasure = timeSignature[0];
 
   const handleContextMenu = (event: React.MouseEvent, instrumentIndex: number, stepIndex: number) => {
@@ -59,9 +54,9 @@ const Sequencer: React.FC<SequencerProps> = React.memo(({
                 onSelect={onInstrumentSelect}
                 onMuteToggle={onMuteToggle}
                 onSoloToggle={onSoloToggle}
-                onCopy={onCopyInstrument}
-                onPaste={onPasteInstrument}
-                onClear={onClearInstrument}
+                onCopy={(id) => onInstrumentAction(id, 'copy')}
+                onPaste={(id) => onInstrumentAction(id, 'paste')}
+                onClear={(id) => onInstrumentAction(id, 'clear')}
                 isPasteDisabled={isInstrumentPasteDisabled}
               />
               <div className="flex items-center gap-1 ml-2 flex-grow">

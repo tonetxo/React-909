@@ -3,14 +3,6 @@
 
 echo "Validating project integrity and critical fixes..."
 
-# 1. Check infinite loop fix in clock-processor.js
-echo "Checking clock-processor.js..."
-if grep -q "ticksSent++; // Safety" ./services/clock-processor.js; then
-    echo "✓ clock-processor.js has infinite loop protection"
-else
-    echo "✗ clock-processor.js missing infinite loop protection"
-fi
-
 # 2. Check dead code removal in SequencerEngine.ts
 echo "Checking SequencerEngine.ts..."
 if grep -q "if (nextSongStep === -1)" ./sequencer/SequencerEngine.ts; then

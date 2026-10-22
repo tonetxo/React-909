@@ -30,7 +30,7 @@ export interface InstrumentParams {
 export interface Instrument {
   id: string;
   name: string;
-  sequence: number[];
+  sequence: Velocity[];
   volume: number;
   isMuted: boolean;
   isSolo: boolean;

@@ -10,14 +10,15 @@ GrooveGal (display name "O Grove Son") is a TR-909-inspired web drum machine / s
 - `npm run start` — dev server + Electron (waits on port 3000; needs a display server)
 - `npm run build` / `npm run preview` — production build to `dist/`
 - `npm run electron:build` — build + electron-builder (AppImage / NSIS) into `release/`
-- `npx tsc --noEmit` — typecheck; this is the **only** static check. There is no linter, formatter or test framework.
-- Validation shell scripts (grep-based checks, not tests): `bash validate-sync-fixes.sh`, `bash validate-improvements.sh`; MIDI helpers: `bash check-midi-clock.sh`, `bash cleanup-midi.sh` (kills zombie MIDI slave processes)
+- `npx tsc --noEmit` — typecheck (`noUnusedLocals` is on). No linter/formatter.
+- `npm test` — Vitest (`vitest run`). Single file: `npx vitest run services/projectIO.test.ts`; single test: add `-t "<name>"`. Tests cover the pure project load/validation code; the root `.json` exports are used as fixtures.
+- `bash validate-sync-fixes.sh` — grep-based check that MIDI sync fixes are still present; MIDI helpers: `bash check-midi-clock.sh`, `bash cleanup-midi.sh` (kills zombie MIDI slave processes)
 
 ## Architecture
 
 Three layers, top to bottom:
 
-1. **`App.tsx`** — owns *all* React state (patterns, song sequence, tempo/swing, vocoder params, selection). The `state/` dir is empty. Projects persist to `localStorage` and import/export as JSON (`ProjectData` in `types.ts`).
+1. **`App.tsx`** — owns *all* React state (patterns, song sequence, tempo/swing, vocoder params, selection). The `state/` dir is empty. Projects persist to `localStorage` and import/export as JSON (`ProjectData` in `types.ts`). All parsing, migration of old formats and validation of that untrusted JSON goes through `services/projectIO.ts` (`parseProjectData`, `mergePatternData`, `resizeSequence`) — keep it pure and tested.
 2. **`sequencer/SequencerEngine.ts`** — bridges React and audio. Holds the pattern list and song sequence, and reports back through `SequencerCallbacks` (`onStepChange`, `onPatternChange`, `onSongStepChange`, …). In song mode it queues the *next* pattern into the AudioEngine when step 0 of the current one plays, then commits the index change (and notifies React) when the next step 0 arrives. At end of song it calls `setStopAtEndOfPattern(true)`.
 3. **`services/audioService.ts`** — `audioEngine` singleton (`AudioEngine`). Lazily creates the AudioContext (`ensureAudioInitialized`), per-instrument channel strips → drum/bass buses → effects (reverb, delay, flanger) → master gain, plus the vocoder worklet and mic input.
 
@@ -31,8 +32,8 @@ Three layers, top to bottom:
 
 ### AudioWorklets
 
-- `services/vocoder-processor.js` (registers `vocoder-processor-new`) is the one loaded at runtime via `addModule(new URL('./vocoder-processor.js', import.meta.url))`. `services/vocoder-processor.ts` is a TS twin — keep the two in sync if editing vocoder DSP.
-- `services/clock-processor.js` is a worklet MIDI clock generator still built as an entry but not currently loaded by `AudioEngine`.
+- `services/vocoder-processor.js` (registers `vocoder-processor-new`) is the only worklet, loaded at runtime via `addModule(new URL('./vocoder-processor.js', import.meta.url))`. Its carrier is an internal oscillator; the UI's vocoder type / carrier source options are not wired to it yet.
+- MIDI output listing goes through `MidiService.subscribeOutputs` (exposed as `audioEngine.subscribeMidiOutputs`), which also handles hot-plug.
 - Worklets are separate Rollup inputs in `vite.config.ts` with unhashed output `services/[name].js`; keep that mapping if adding/renaming one (electron-builder also packages `services/*.js`).
 
 ### Electron / MIDI
@@ -43,7 +44,8 @@ Three layers, top to bottom:
 
 ## Conventions and gotchas
 
-- Tailwind is loaded from CDN in `index.html` — no PostCSS/config; just use utility classes.
+- Tailwind CSS v3 is built locally via PostCSS (`tailwind.config.js`, `postcss.config.js`, `index.css`). Class names must appear literally in files listed under `content` (incl. `constants.ts`); don't build them with string interpolation.
+- Production builds inject a strict Content-Security-Policy meta tag (`cspPlugin` in `vite.config.ts`): no inline scripts and no remote origins — extend the policy there if a new source is needed.
 - `@/` aliases the project root. TS uses `moduleResolution: "bundler"`, `allowJs`, `experimentalDecorators`, `useDefineForClassFields: false`.
 - PWA via `vite-plugin-pwa` (`autoUpdate`); assets in `public/`.
 - Root `.json` files (`pobas*.json`, `song_multimetrica*.json`, `5x4.json`, `6x8.json`, `tie_error.json`, `gemini-*.json`, …) are exported songs/projects useful as fixtures, **not** config. `metadata.json` and `tatus` are stale artifacts.

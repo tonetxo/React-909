@@ -7,102 +7,21 @@ import SongSequencer from './components/SongSequencer';
 import BasslineSequencer from './components/BasslineSequencer';
 import VocoderControls from './components/VocoderControls';
 import MidiOutputSelector from './components/MidiOutputSelector';
-import { Instrument, Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Waveform, BasslinePattern, VocoderParams, VocoderCarrier, VocoderType, TimeSignature } from './types';
-import { getInitialInstruments, INITIAL_TEMPO, INITIAL_SWING, getInitialBasslinePattern, INITIAL_VOCODER_PARAMS } from './constants';
+import { Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Waveform, VocoderParams, VocoderType, TimeSignature } from './types';
+import { INITIAL_VOCODER_PARAMS } from './constants';
 import { audioEngine } from './services/audioService';
+import { NUM_PATTERNS, SONG_STEPS, stepsFromTimeSig, resizeSequence, emptyBasslineStep, createDefaultPattern, createDefaultProject, parseProjectData, serializeProject } from './services/projectIO';
 
 const PROJECT_STORAGE_KEY = 'gemini-groove-project';
-const NUM_PATTERNS = 4;
-const SONG_STEPS = 16;
-
-const stepsFromTimeSig = (ts: TimeSignature): number =>
-  ts[1] === 8 ? ts[0] * 2 : ts[0] * 4;
-
-const mergeInstrumentData = (loadedInstruments: Instrument[], steps: number): Instrument[] => {
-  // Start with a fresh deep copy of the default instruments.
-  const newInstruments = JSON.parse(JSON.stringify(getInitialInstruments(steps)));
-
-  if (!Array.isArray(loadedInstruments)) {
-    return newInstruments;
-  }
-
-  const loadedInstrumentsMap = new Map<string, Instrument>();
-  loadedInstruments.forEach(inst => {
-    if (inst && inst.id) {
-      loadedInstrumentsMap.set(inst.id, inst);
-    }
-  });
-
-  newInstruments.forEach((instrument: Instrument) => {
-    const loadedData = loadedInstrumentsMap.get(instrument.id);
-    if (loadedData) {
-      instrument.volume = loadedData.volume ?? instrument.volume;
-      instrument.isMuted = loadedData.isMuted ?? instrument.isMuted;
-      instrument.isSolo = loadedData.isSolo ?? instrument.isSolo;
-
-      if (loadedData.params) {
-        instrument.params = { ...instrument.params, ...loadedData.params };
-      }
-
-      if (Array.isArray(loadedData.sequence) && loadedData.sequence.length === steps) {
-        instrument.sequence = loadedData.sequence;
-      }
-    }
-  });
-
-  return newInstruments;
-};
-
-
-const mergePatternData = (loadedPattern: Pattern | null, timeSignature: TimeSignature, steps: number): Pattern => {
-  const defaultBassline = JSON.parse(JSON.stringify(getInitialBasslinePattern(steps)));
-  if (!loadedPattern) {
-    return {
-      tempo: INITIAL_TEMPO,
-      swing: INITIAL_SWING,
-      timeSignature: timeSignature,
-      instruments: mergeInstrumentData([], steps),
-      bassline: defaultBassline,
-    };
-  }
-  // Basic migration for older projects without velocity
-  const migratedBasslineSequence = (loadedPattern.bassline?.sequence || defaultBassline.sequence).map((step: any) => ({
-    note: step.note,
-    velocity: step.velocity ?? (step.accent ? 3 : 0),
-    slide: step.slide ?? false,
-    tie: step.tie ?? false,
-  }));
-
-
-  return {
-    tempo: loadedPattern.tempo,
-    swing: loadedPattern.swing,
-    timeSignature: loadedPattern.timeSignature || timeSignature, // Use loaded or default
-    instruments: mergeInstrumentData(loadedPattern.instruments, steps),
-    bassline: loadedPattern.bassline
-      ? {
-        sequence: migratedBasslineSequence.length === steps ? migratedBasslineSequence : defaultBassline.sequence,
-        params: { ...defaultBassline.params, ...loadedPattern.bassline.params }
-      }
-      : defaultBassline,
-  };
-};
 
 const App: React.FC = () => {
   const [timeSignature, setTimeSignature] = useState<TimeSignature>([4, 4]);
-  const [stepsPerSequence, setStepsPerSequence] = useState<number>(16);
 
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentStep, setCurrentStep] = useState<number | null>(null);
   const [selectedInstrumentId, setSelectedInstrumentId] = useState<string | null>(null);
 
-  const [patterns, setPatterns] = useState<(Pattern | null)[]>(() => Array(NUM_PATTERNS).fill(null).map(() => ({
-    tempo: INITIAL_TEMPO,
-    swing: INITIAL_SWING,
-    timeSignature: [4, 4],
-    instruments: getInitialInstruments(stepsPerSequence),
-    bassline: getInitialBasslinePattern(stepsPerSequence),
-  })));
+  const [patterns, setPatterns] = useState<(Pattern | null)[]>(() => createDefaultProject().patterns);
   const [selectedPatternIndex, setSelectedPatternIndex] = useState<number>(0);
   const [clipboard, setClipboard] = useState<Pattern | null>(null);
   const [instrumentClipboard, setInstrumentClipboard] = useState<Velocity[] | null>(null);
@@ -113,13 +32,8 @@ const App: React.FC = () => {
   const [vocoderParams, setVocoderParams] = useState<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
 
   // --- Derived State ---
-  const activePattern = patterns[selectedPatternIndex] ?? mergePatternData(null, timeSignature, stepsPerSequence);
+  const activePattern = patterns[selectedPatternIndex] ?? createDefaultPattern(timeSignature);
   const { tempo, swing, instruments, bassline: basslinePattern } = activePattern;
-
-
-
-  const vocoderParamsRef = useRef<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
-  vocoderParamsRef.current = vocoderParams;
 
   const saveTimeoutRef = useRef<number | null>(null);
 
@@ -133,8 +47,6 @@ const App: React.FC = () => {
 
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
-  // MIDI Output Selection
-  const [selectedMidiOutput, setSelectedMidiOutput] = useState<string>('');
 
   const saveProject = (patternsToSave: (Pattern | null)[], songSeqToSave: (number | null)[], isLoopingToSave: boolean) => {
     try {
@@ -142,45 +54,28 @@ const App: React.FC = () => {
         patterns: patternsToSave,
         song: { sequence: songSeqToSave, isLooping: isLoopingToSave },
       };
-      localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projectData));
+      localStorage.setItem(PROJECT_STORAGE_KEY, serializeProject(projectData));
     } catch (error) {
       console.error("Failed to save project to localStorage:", error);
     }
+  };
+
+  const applyProject = (project: ProjectData, patternIndex: number) => {
+    setPatterns(project.patterns);
+    setSongSequence(project.song.sequence);
+    setIsSongLooping(project.song.isLooping);
+    const pattern = project.patterns[patternIndex];
+    if (pattern) setTimeSignature(pattern.timeSignature);
   };
 
   useEffect(() => {
     try {
       const savedProject = localStorage.getItem(PROJECT_STORAGE_KEY);
       if (savedProject) {
-        const parsedProject = JSON.parse(savedProject) as ProjectData;
-        if (parsedProject.patterns && parsedProject.song) {
-          const mergedPatterns = parsedProject.patterns.map(p => {
-            const ts = p?.timeSignature || [4, 4];
-            const steps = stepsFromTimeSig(ts);
-            return mergePatternData(p, ts, steps);
-          });
-          setPatterns(mergedPatterns);
-          setSongSequence(parsedProject.song.sequence ?? Array(SONG_STEPS).fill(null));
-          setIsSongLooping(parsedProject.song.isLooping ?? false);
-
-          const currentPattern = mergedPatterns[selectedPatternIndex];
-          if (currentPattern) {
-            setTimeSignature(currentPattern.timeSignature);
-          }
-        } else {
-          throw new Error("Invalid project data");
-        }
-      } else {
-        // If no saved project, ensure the initial pattern is correctly set up
-        // based on the initial time signature and steps.
-        const mergedPattern = mergePatternData(null, timeSignature, stepsPerSequence);
-        setPatterns([mergedPattern, null, null, null]);
+        applyProject(parseProjectData(JSON.parse(savedProject)), selectedPatternIndex);
       }
     } catch (error) {
-      console.error("Failed to load project:", error);
-      // If loading fails, create a default pattern.
-      const mergedPattern = mergePatternData(null, timeSignature, stepsPerSequence);
-      setPatterns([mergedPattern, null, null, null]);
+      console.error("Failed to load project, using defaults:", error);
     } finally {
       setIsLoaded(true);
     }
@@ -282,11 +177,11 @@ const App: React.FC = () => {
   const updateCurrentPattern = useCallback((updater: (pattern: Pattern) => Pattern) => {
     setPatterns(prevPatterns => {
       const newPatterns = [...prevPatterns];
-      const currentPattern = newPatterns[selectedPatternIndex] ?? mergePatternData(null, timeSignature, stepsPerSequence);
+      const currentPattern = newPatterns[selectedPatternIndex] ?? createDefaultPattern(timeSignature);
       newPatterns[selectedPatternIndex] = updater(currentPattern);
       return newPatterns;
     });
-  }, [selectedPatternIndex, timeSignature, stepsPerSequence]);
+  }, [selectedPatternIndex, timeSignature]);
 
   const handleTempoChange = useCallback((newTempo: number) => updateCurrentPattern(p => ({ ...p, tempo: newTempo })), [updateCurrentPattern]);
   const handleSwingChange = useCallback((newSwing: number) => updateCurrentPattern(p => ({ ...p, swing: newSwing })), [updateCurrentPattern]);
@@ -296,24 +191,14 @@ const App: React.FC = () => {
     audioEngine.setMasterVolume(value);
   }, []);
 
-  useEffect(() => {
-    const [beats, beatType] = timeSignature;
-    const newStepsPerSequence = beatType === 8 ? beats * 2 : beats * 4;
-    setStepsPerSequence(newStepsPerSequence);
-  }, [timeSignature]);
-
   const handleTimeSignatureChange = useCallback((newTimeSignature: TimeSignature) => {
     setTimeSignature(newTimeSignature);
-    const newSteps = newTimeSignature[1] === 8 ? newTimeSignature[0] * 2 : newTimeSignature[0] * 4;
-    const resize = (seq: any[]) => {
-      if (seq.length === newSteps) return seq;
-      return seq.length > newSteps ? seq.slice(0, newSteps) : [...seq, ...Array(newSteps - seq.length).fill(0)];
-    };
+    const newSteps = stepsFromTimeSig(newTimeSignature);
     updateCurrentPattern(p => ({
       ...p,
       timeSignature: newTimeSignature,
-      instruments: p.instruments.map(inst => ({ ...inst, sequence: resize(inst.sequence) })),
-      bassline: { ...p.bassline!, sequence: resize(p.bassline!.sequence).map(s => typeof s === 'number' ? { note: null, velocity: 0, slide: false, tie: false } : s) }
+      instruments: p.instruments.map(inst => ({ ...inst, sequence: resizeSequence(inst.sequence, newSteps, () => 0 as Velocity) })),
+      bassline: { ...p.bassline!, sequence: resizeSequence(p.bassline!.sequence, newSteps, emptyBasslineStep) }
     }));
   }, [updateCurrentPattern]);
 
@@ -350,9 +235,12 @@ const App: React.FC = () => {
         break;
       case 'paste':
         if (instrumentClipboard) {
+          // Fit the copied steps to this pattern's length (it may use another time signature)
           updateCurrentPattern(p => ({
             ...p,
-            instruments: p.instruments.map(inst => inst.id === id ? { ...inst, sequence: [...instrumentClipboard] } : inst)
+            instruments: p.instruments.map(inst => inst.id === id
+              ? { ...inst, sequence: resizeSequence([...instrumentClipboard], inst.sequence.length, () => 0 as Velocity) }
+              : inst)
           }));
         }
         break;
@@ -382,11 +270,13 @@ const App: React.FC = () => {
   const handlePastePattern = useCallback(() => {
     if (clipboard) {
       updateCurrentPattern(() => JSON.parse(JSON.stringify(clipboard)));
+      // The pasted pattern brings its own time signature
+      setTimeSignature(clipboard.timeSignature);
     }
   }, [clipboard, updateCurrentPattern]);
   const handleExportPatterns = useCallback(() => {
     const projectData: ProjectData = { patterns, song: { sequence: songSequence, isLooping: isSongLooping } };
-    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+    const blob = new Blob([serializeProject(projectData, true)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `gemini-groove-project-${new Date().toISOString().slice(0, 10)}.json`;
@@ -400,21 +290,8 @@ const App: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const data = JSON.parse(e.target?.result as string);
-        const projectData: ProjectData = Array.isArray(data) ? { patterns: data, song: { sequence: Array(SONG_STEPS).fill(null), isLooping: false } } : data;
-
-        if (!projectData.patterns || !projectData.song) throw new Error("Invalid project file");
-
-        const looping = projectData.song.isLooping ?? false;
-        const mergedPatterns = projectData.patterns.map(p => mergePatternData(p, p?.timeSignature || [4, 4], stepsFromTimeSig(p?.timeSignature || [4, 4])));
-        setPatterns(mergedPatterns);
-        setSongSequence(projectData.song.sequence);
-        setIsSongLooping(looping);
-
-        const firstPattern = mergedPatterns[0];
-        if (firstPattern) {
-          setTimeSignature(firstPattern.timeSignature);
-        }
+        const projectData = parseProjectData(JSON.parse(e.target?.result as string));
+        applyProject(projectData, 0);
         setSelectedPatternIndex(0);
         setIsSongModeActive(false);
 
@@ -465,23 +342,19 @@ const App: React.FC = () => {
       sequencerEngine.stop();
       setIsPlaying(false);
     }
-    setTimeSignature([4, 4]);
-    setPatterns(Array(NUM_PATTERNS).fill(null).map(() => mergePatternData(null, [4, 4], 16)));
+    applyProject(createDefaultProject(), 0);
     setSelectedPatternIndex(0);
     setClipboard(null);
     setVocoderParams(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
     setIsSongModeActive(false);
-    setSongSequence(Array(SONG_STEPS).fill(null));
-    setIsSongLooping(false);
     localStorage.removeItem(PROJECT_STORAGE_KEY);
     alert("Application state reset to defaults!");
   }, [isPlaying, sequencerEngine, setIsPlaying, setTimeSignature, setPatterns, setSelectedPatternIndex, setClipboard, setVocoderParams, setIsSongModeActive, setSongSequence, setIsSongLooping]);
 
   // --- MIDI Output Handlers ---
   const handleMidiOutputChange = useCallback((outputName: string) => {
-    setSelectedMidiOutput(outputName);
     sequencerEngine.setMidiOutput(outputName);
-  }, [sequencerEngine, setSelectedMidiOutput]);
+  }, [sequencerEngine]);
 
   // --- Bassline Handlers ---
   const handleBasslineParamChange = useCallback((param: keyof BasslineParams, value: number | Waveform | boolean) => {
@@ -545,7 +418,7 @@ const App: React.FC = () => {
         </header>
         <main className="space-y-6 flex flex-col items-center">
           <TransportControls isPlaying={isPlaying} onPlayToggle={handlePlayToggle} tempo={tempo} onTempoChange={handleTempoChange} swing={swing} onSwingChange={handleSwingChange} timeSignature={timeSignature} onTimeSignatureChange={handleTimeSignatureChange} masterVolume={masterVolume} onMasterVolumeChange={handleMasterVolumeChange} />
-          <MidiOutputSelector onOutputSelect={handleMidiOutputChange} />
+          <MidiOutputSelector onOutputSelect={handleMidiOutputChange} subscribeOutputs={audioEngine.subscribeMidiOutputs} />
           <PatternControls patterns={patterns} selectedPatternIndex={selectedPatternIndex} onLoad={handleLoadPattern} onSave={handleSavePattern} onExport={handleExportPatterns} onImport={handleImportPatterns} onCopy={handleCopyPattern} onPaste={handlePastePattern} isClipboardEmpty={clipboard === null} isPlaying={isPlaying} onReset={handleReset} />
           <SongSequencer sequence={songSequence} isActive={isSongModeActive} isLooping={isSongLooping} currentStep={currentSongStep} onToggle={handleToggleSongMode} onToggleLoop={handleToggleSongLoop} onStepClick={handleSongStepClick} onClear={handleClearSong} />
 

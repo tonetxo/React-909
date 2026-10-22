@@ -2,7 +2,7 @@
 export class MidiService {
     private midiAccess: WebMidi.MIDIAccess | null = null;
     private midiOutput: WebMidi.MIDIOutput | null = null;
-    private clockMessageCount = 0; // Diagnostic counter
+    private outputListeners = new Set<(outputNames: string[]) => void>();
 
     constructor() {
         this.init();
@@ -18,6 +18,9 @@ export class MidiService {
             this.midiAccess = await navigator.requestMIDIAccess();
             console.log("MIDI Access granted.");
             this.listMidiOutputs();
+            // Hot-plug: refresh the output list whenever a device appears or disappears
+            this.midiAccess.onstatechange = () => this.notifyOutputs();
+            this.notifyOutputs();
 
             // No auto-selection here. We rely on the UI (MidiOutputSelector) to set the port.
         } catch (error) {
@@ -89,9 +92,6 @@ export class MidiService {
             return;
         }
 
-        // Reset diagnostic counter
-        this.clockMessageCount = 0;
-
         // Send stop message to reset slave state
         try {
             // Stop at the given time (performance.now() base), or immediately
@@ -122,23 +122,21 @@ export class MidiService {
 
     public getAvailableOutputs(): string[] {
         if (!this.midiAccess) return [];
-        // Filter out "Midi Through" and ports that look like inputs to prevent feedback loops and confusion
+        // Filter out inputs that appear as outputs (common in Linux/ALSA for virtual ports)
         return Array.from(this.midiAccess.outputs.values())
-            .filter(output =>
-                !output.name.includes('Midi Through') &&
-                !output.name.toLowerCase().includes('input')
-            )
+            .filter(output => !output.name.toLowerCase().includes('input'))
             .map(output => output.name);
     }
 
-
-    public getAllInputs(): WebMidi.MIDIInput[] {
-        if (!this.midiAccess) return [];
-        return Array.from(this.midiAccess.inputs.values());
+    /** Calls `listener` now and whenever the available outputs change. Returns an unsubscribe function. */
+    public subscribeOutputs(listener: (outputNames: string[]) => void): () => void {
+        this.outputListeners.add(listener);
+        listener(this.getAvailableOutputs());
+        return () => { this.outputListeners.delete(listener); };
     }
 
-    public getAllOutputs(): WebMidi.MIDIOutput[] {
-        if (!this.midiAccess) return [];
-        return Array.from(this.midiAccess.outputs.values());
+    private notifyOutputs(): void {
+        const outputNames = this.getAvailableOutputs();
+        this.outputListeners.forEach(listener => listener(outputNames));
     }
 }

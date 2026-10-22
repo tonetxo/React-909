@@ -1,7 +1,28 @@
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// Applied to production builds only: the dev server injects inline scripts (React Refresh).
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "media-src 'self' blob: mediastream:",
+  "connect-src 'self'",
+  "worker-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+].join('; ');
+
+const cspPlugin = (): Plugin => ({
+  name: 'inject-csp',
+  apply: 'build',
+  transformIndexHtml: () => [
+    { tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: CONTENT_SECURITY_POLICY }, injectTo: 'head-prepend' },
+  ],
+});
 
 export default defineConfig(() => {
   return {
@@ -12,6 +33,7 @@ export default defineConfig(() => {
     },
     plugins: [
       react(),
+      cspPlugin(),
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
@@ -51,12 +73,11 @@ export default defineConfig(() => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
-          'clock-processor': path.resolve(__dirname, 'services/clock-processor.js'),
           'vocoder-processor': path.resolve(__dirname, 'services/vocoder-processor.js'),
         },
         output: {
           entryFileNames: (chunkInfo) => {
-            if (chunkInfo.name === 'vocoder-processor' || chunkInfo.name === 'vocoder-processor-new' || chunkInfo.name === 'clock-processor') {
+            if (chunkInfo.name === 'vocoder-processor') {
               return `services/[name].js`;
             }
             return `assets/[name]-[hash].js`;
