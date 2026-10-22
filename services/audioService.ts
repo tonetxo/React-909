@@ -43,6 +43,7 @@ export class AudioEngine {
     private noteKeyHeld = false;
     // MIDI notes the vocoder's internal synth carrier plays (one per voice)
     private synthNotes: number[] = [];
+    private synthGlide = 0;
     private basslineSynth: BasslineSynth;
 
     private micStream: MediaStream | null = null;
@@ -378,15 +379,17 @@ export class AudioEngine {
         this.drumCarrierGain?.gain.setTargetAtTime(carrier === 'drums' || carrier === 'both' ? 1 : 0, now, 0.01);
         this.bassCarrierGain?.gain.setTargetAtTime(carrier === 'bass' || carrier === 'both' ? 1 : 0, now, 0.01);
         this.vocoderWorkletNode.port.postMessage({ type: 'SET_CARRIER_SOURCE', value: carrier === 'synth' ? 'internal' : 'external' });
-        this.vocoderWorkletNode.port.postMessage({ type: 'SET_SYNTH_NOTES', value: this.synthNotes });
+        this.vocoderWorkletNode.port.postMessage({ type: 'SET_SYNTH_NOTES', value: this.synthNotes, glide: this.synthGlide });
         this.applyKeyGate();
 
         this.vocoderWorkletNode.port.postMessage({ type: 'SET_CARRIER_WAVEFORM', value: params.carrierWaveform });
     }
 
-    public setSynthNotes(notes: number[]) {
+    /** `glide`: seconds to slide to a new single note (Mono); 0 jumps. */
+    public setSynthNotes(notes: number[], glide = 0) {
         this.synthNotes = notes;
-        this.vocoderWorkletNode?.port.postMessage({ type: 'SET_SYNTH_NOTES', value: notes });
+        this.synthGlide = glide;
+        this.vocoderWorkletNode?.port.postMessage({ type: 'SET_SYNTH_NOTES', value: notes, glide });
     }
 
     public setNoteKeyHeld(held: boolean) {

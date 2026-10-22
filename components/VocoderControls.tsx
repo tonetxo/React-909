@@ -155,6 +155,9 @@ const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, on
                         >
                             Gate {params.keyGate ? 'ON' : 'OFF'}
                         </button>
+                        <div className="w-36 shrink-0" title="Glide (só en Mono): tempo para esvarar dunha nota á seguinte">
+                            <ParamSlider id="vocoder-glide" label="Glide" min={0} max={0.5} step={0.01} value={params.glide} onChange={(v) => onParamChange('glide', v)} format={formatMs} disabled={!params.enabled || params.carrier !== 'synth' || params.poly} />
+                        </div>
                         <p className="text-xs text-gray-500">
                             Toca Synth Pitch co teclado MIDI ou co do PC: fila A–Ñ (A = {formatNote(pcKeyboardBase)}), W E T Y U O P para as negras, Z / X baixan ou soben a oitava.
                         </p>

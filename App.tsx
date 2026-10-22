@@ -387,7 +387,8 @@ const App: React.FC = () => {
     const params = vocoderParamsRef.current;
     const held = heldNotesRef.current.latest(params.poly ? MAX_SYNTH_VOICES : 1);
     const notes = held.length > 0 ? held : [params.synthPitch];
-    audioEngine.setSynthNotes(notes.map(note => fitToRange(note, SYNTH_PITCH_MIN, SYNTH_PITCH_MAX)));
+    // Glide only makes sense for a single line of notes, so it applies in Mono only
+    audioEngine.setSynthNotes(notes.map(note => fitToRange(note, SYNTH_PITCH_MIN, SYNTH_PITCH_MAX)), params.poly ? 0 : params.glide);
     audioEngine.setNoteKeyHeld(held.length > 0);
   }, [audioEngine]);
 

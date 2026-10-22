@@ -93,6 +93,7 @@ export interface VocoderParams {
   carrierWaveform: Waveform; // internal synth carrier
   keyGate: boolean; // synth carrier only sounds while a note key is held
   poly: boolean; // synth carrier plays up to MAX_SYNTH_VOICES held notes (otherwise the last one)
+  glide: number; // seconds for the Mono synth to slide to a new note (0 = jump)
 }
 
 export interface ProjectData {

@@ -100,9 +100,12 @@ const midiToFreq = (note) => 440 * Math.pow(2, (note - 69) / 12);
 
 // Internal carrier: up to MAX_SYNTH_VOICES oscillators, one per held note. Each voice ramps its
 // gain in and out (no clicks), and a held note keeps its voice so its phase stays continuous.
+// With a glide time and a single note (Mono), the sounding voice slides to the new pitch instead.
 class PolySynth {
     constructor() {
-        this.voices = Array.from({ length: MAX_SYNTH_VOICES }, () => ({ osc: new Oscillator(), note: -1, gain: 0, target: 0 }));
+        // logFreq / glideTarget: current and target pitch as ln(Hz), so a glide takes the same time for any interval
+        this.voices = Array.from({ length: MAX_SYNTH_VOICES }, () => ({ osc: new Oscillator(), note: -1, gain: 0, target: 0, logFreq: 0, glideTarget: 0 }));
+        this.glideCoeff = 1;
         this.attackCoeff = timeToCoeff(0.003);
         this.releaseCoeff = timeToCoeff(0.03);
         this.level = 1;
@@ -118,8 +121,20 @@ class PolySynth {
         for (const voice of this.voices) voice.osc.type = type;
     }
 
-    setNotes(notes) {
+    /** `glide`: seconds to (nearly, ~95%) reach a new single note; 0 jumps. */
+    setNotes(notes, glide = 0) {
         const wanted = [...new Set(notes)].slice(0, MAX_SYNTH_VOICES);
+        if (glide > 0 && wanted.length === 1) {
+            const sounding = this.voices.filter(voice => voice.target === 1);
+            if (sounding.length === 1) {
+                const voice = sounding[0];
+                voice.note = wanted[0];
+                voice.glideTarget = Math.log(midiToFreq(wanted[0]));
+                this.glideCoeff = timeToCoeff(glide / 3); // three time constants = 95%
+                this.level = 1;
+                return;
+            }
+        }
         // Keep voices whose note is still wanted, release the rest
         for (const voice of this.voices) {
             if (voice.target === 0) continue;
@@ -133,6 +148,7 @@ class PolySynth {
             for (const voice of this.voices) if (voice.target === 0 && (!free || voice.gain < free.gain)) free = voice;
             free.note = note;
             free.osc.frequency = midiToFreq(note);
+            free.logFreq = free.glideTarget = Math.log(free.osc.frequency);
             free.target = 1;
         }
         // Keep the summed tone at a similar level next to the sibilance noise, whatever the chord size
@@ -148,6 +164,11 @@ class PolySynth {
             if (voice.target === 0 && voice.gain < 1e-4) {
                 voice.gain = 0;
                 continue;
+            }
+            if (voice.logFreq !== voice.glideTarget) {
+                const remaining = voice.glideTarget - voice.logFreq;
+                voice.logFreq = Math.abs(remaining) < 1e-5 ? voice.glideTarget : voice.logFreq + remaining * this.glideCoeff;
+                voice.osc.frequency = Math.exp(voice.logFreq);
             }
             sum += voice.osc.process() * voice.gain;
         }
@@ -252,7 +273,7 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
             if (event.data.type === 'SET_CARRIER_WAVEFORM') {
                 this.carrierSynth.type = event.data.value;
             } else if (event.data.type === 'SET_SYNTH_NOTES') {
-                this.carrierSynth.setNotes(event.data.value);
+                this.carrierSynth.setNotes(event.data.value, event.data.glide);
             } else if (event.data.type === 'SET_CARRIER_SOURCE') {
                 this.useExternalCarrier = event.data.value === 'external';
             }

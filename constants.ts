@@ -267,6 +267,7 @@ export const INITIAL_VOCODER_PARAMS: VocoderParams = {
   carrierWaveform: 'sawtooth',
   keyGate: false,
   poly: true,
+  glide: 0.1,
   voiceGain: 30,
   noiseGate: 5,
   attack: 0.003,
