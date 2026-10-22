@@ -371,6 +371,7 @@ export class AudioEngine {
         p.get('dryWet')?.setTargetAtTime(params.mix, now, 0.01);
         p.get('qFactor')?.setTargetAtTime(params.qFactor ?? 5, now, 0.01);
         p.get('carrierFreq')?.setTargetAtTime(midiToFreq(params.synthPitch), now, 0.01);
+        p.get('formantShift')?.setTargetAtTime(params.formantShift, now, 0.01);
 
         const { carrier } = params;
         this.drumCarrierGain?.gain.setTargetAtTime(carrier === 'drums' || carrier === 'both' ? 1 : 0, now, 0.01);

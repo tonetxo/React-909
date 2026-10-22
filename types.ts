@@ -85,7 +85,7 @@ export interface VocoderParams {
   carrier: VocoderCarrier;
   mix: number; // 0 (dry) to 1 (wet)
   bands: number; // e.g. 8, 16, 32
-  formantShift: number; // e.g. from -1 to 1 octave
+  formantShift: number; // semitones, -12 to 12
   synthPitch: number; // MIDI note for internal synth
 
   // New vocoder params

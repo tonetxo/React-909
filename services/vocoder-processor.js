@@ -23,6 +23,16 @@ const DENORMAL_LIMIT = 1e-15;
 
 const timeToCoeff = (seconds) => 1 - Math.exp(-1 / (sampleRate * seconds));
 
+// Constant 0 dB peak gain bandpass (RBJ cookbook), stored at index j of the coefficient arrays
+const setBandpass = (b0, a1, a2, j, freq, Q) => {
+    const omega = 2 * Math.PI * freq / sampleRate;
+    const alpha = Math.sin(omega) / (2 * Q);
+    const a0Inv = 1 / (1 + alpha);
+    b0[j] = alpha * a0Inv;
+    a1[j] = -2 * Math.cos(omega) * a0Inv;
+    a2[j] = (1 - alpha) * a0Inv;
+};
+
 // PolyBLEP correction: removes most of the aliasing of naive saw/square waves
 const polyBlep = (t, dt) => {
     if (t < dt) {
@@ -106,6 +116,8 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
             { name: 'dryWet', defaultValue: 1.0, minValue: 0, maxValue: 1 },
             { name: 'qFactor', defaultValue: 5, minValue: 1, maxValue: 12 },
             { name: 'carrierFreq', defaultValue: 110, minValue: 30, maxValue: 1100 },
+            // Semitones: moves the carrier bands relative to the modulator bands (voice size/timbre)
+            { name: 'formantShift', defaultValue: 0, minValue: -12, maxValue: 12 },
         ];
     }
 
@@ -116,11 +128,15 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
         this.modulatorHighpass = new Highpass(70);
 
         // Constant 0 dB peak bandpass (RBJ): b1 = 0 and b2 = -b0, so only b0, a1, a2 are stored.
-        // Modulator and carrier bands share the same coefficients (two cascaded stages = 4th order).
+        // Each band is two cascaded stages (4th order). Carrier bands get their own coefficients
+        // because the formant shift moves them away from the modulator bands.
         this.bandFreqs = new Float64Array(NUM_BANDS);
         this.b0 = new Float64Array(NUM_BANDS);
         this.a1 = new Float64Array(NUM_BANDS);
         this.a2 = new Float64Array(NUM_BANDS);
+        this.carrierB0 = new Float64Array(NUM_BANDS);
+        this.carrierA1 = new Float64Array(NUM_BANDS);
+        this.carrierA2 = new Float64Array(NUM_BANDS);
         this.filterState = new Float64Array(NUM_BANDS * STATE_PER_BAND);
         this.modulatorLevels = new Float64Array(NUM_BANDS);
         this.modulatorSmoothed = new Float64Array(NUM_BANDS);
@@ -129,10 +145,7 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
 
         const ratio = Math.pow(MAX_BAND_FREQ / MIN_BAND_FREQ, 1 / (NUM_BANDS - 1));
         for (let j = 0; j < NUM_BANDS; j++) {
-            const freq = MIN_BAND_FREQ * Math.pow(ratio, j);
-            this.bandFreqs[j] = freq;
-            const fade = (freq - NOISE_FADE_START) / (NOISE_FADE_END - NOISE_FADE_START);
-            this.noiseWeights[j] = Math.min(Math.max(fade, 0), 1);
+            this.bandFreqs[j] = MIN_BAND_FREQ * Math.pow(ratio, j);
         }
 
         // Broadband mic level and gate state for the noise gate
@@ -141,6 +154,7 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
         this.gateGain = 0;
 
         this.lastQFactor = -1;
+        this.lastFormantShift = NaN;
         this.lastAttack = -1;
         this.lastRelease = -1;
         this.attackCoeff = 0;
@@ -163,14 +177,16 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
         };
     }
 
-    setQ(Q) {
+    setFilters(Q, formantShift) {
+        const shiftRatio = Math.pow(2, formantShift / 12);
+        const maxFreq = sampleRate * 0.45;
         for (let j = 0; j < NUM_BANDS; j++) {
-            const omega = 2 * Math.PI * this.bandFreqs[j] / sampleRate;
-            const alpha = Math.sin(omega) / (2 * Q);
-            const a0Inv = 1 / (1 + alpha);
-            this.b0[j] = alpha * a0Inv;
-            this.a1[j] = -2 * Math.cos(omega) * a0Inv;
-            this.a2[j] = (1 - alpha) * a0Inv;
+            setBandpass(this.b0, this.a1, this.a2, j, this.bandFreqs[j], Q);
+            const carrierFreq = Math.min(this.bandFreqs[j] * shiftRatio, maxFreq);
+            setBandpass(this.carrierB0, this.carrierA1, this.carrierA2, j, carrierFreq, Q);
+            // Sibilance noise goes where the consonants end up after the shift
+            const fade = (carrierFreq - NOISE_FADE_START) / (NOISE_FADE_END - NOISE_FADE_START);
+            this.noiseWeights[j] = Math.min(Math.max(fade, 0), 1);
         }
     }
 
@@ -206,9 +222,11 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
         const qFactor = parameters.qFactor[0];
         this.carrierOsc.frequency = parameters.carrierFreq[0];
 
-        if (qFactor !== this.lastQFactor) {
-            this.setQ(qFactor);
+        const formantShift = parameters.formantShift[0];
+        if (qFactor !== this.lastQFactor || formantShift !== this.lastFormantShift) {
+            this.setFilters(qFactor, formantShift);
             this.lastQFactor = qFactor;
+            this.lastFormantShift = formantShift;
         }
         if (attack !== this.lastAttack) {
             this.attackCoeff = timeToCoeff(attack / 2);
@@ -219,7 +237,7 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
             this.lastRelease = release;
         }
 
-        const { b0, a1, a2, filterState: s, modulatorLevels, modulatorSmoothed, carrierLevels, noiseWeights } = this;
+        const { b0, a1, a2, carrierB0, carrierA1, carrierA2, filterState: s, modulatorLevels, modulatorSmoothed, carrierLevels, noiseWeights } = this;
         const attackCoeff = this.attackCoeff, releaseCoeff = this.releaseCoeff;
         const carrierAttackCoeff = this.carrierAttackCoeff, carrierReleaseCoeff = this.carrierReleaseCoeff;
         const bandGain = voiceGain * OUTPUT_GAIN;
@@ -253,11 +271,12 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
                 modulatorSmoothed[j] = smoothed;
 
                 // Carrier: same bandpass, normalised by its own envelope
+                const cg = carrierB0[j], cc1 = carrierA1[j], cc2 = carrierA2[j];
                 x = oscSample + noiseSample * noiseWeights[j];
-                y = g * (x - s[k + 9]) - c1 * s[k + 10] - c2 * s[k + 11];
+                y = cg * (x - s[k + 9]) - cc1 * s[k + 10] - cc2 * s[k + 11];
                 s[k + 9] = s[k + 8]; s[k + 8] = x; s[k + 11] = s[k + 10]; s[k + 10] = y;
                 x = y;
-                y = g * (x - s[k + 13]) - c1 * s[k + 14] - c2 * s[k + 15];
+                y = cg * (x - s[k + 13]) - cc1 * s[k + 14] - cc2 * s[k + 15];
                 s[k + 13] = s[k + 12]; s[k + 12] = x; s[k + 15] = s[k + 14]; s[k + 14] = y;
 
                 level = y < 0 ? -y : y;
