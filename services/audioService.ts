@@ -1,6 +1,7 @@
 import { Velocity, InstrumentParams, BasslineStep, BasslineParams, VocoderParams, Instrument, BasslinePattern } from '../types';
 import { playInstrument, BasslineSynth, midiToFreq } from './synthesis';
 import { MidiService } from './MidiService';
+import { NoteMessage } from './noteInput';
 
 type StepCallback = (step: number) => void;
 
@@ -38,6 +39,8 @@ export class AudioEngine {
     // Route the drum / bass buses into the vocoder's carrier input (gain 0 or 1, set by the Carrier choice)
     private drumCarrierGain: GainNode | null = null;
     private bassCarrierGain: GainNode | null = null;
+    // Whether a note key (MIDI or PC keyboard) is held, for the vocoder key gate
+    private noteKeyHeld = false;
     private basslineSynth: BasslineSynth;
 
     private micStream: MediaStream | null = null;
@@ -374,8 +377,26 @@ export class AudioEngine {
         this.drumCarrierGain?.gain.setTargetAtTime(carrier === 'drums' || carrier === 'both' ? 1 : 0, now, 0.01);
         this.bassCarrierGain?.gain.setTargetAtTime(carrier === 'bass' || carrier === 'both' ? 1 : 0, now, 0.01);
         this.vocoderWorkletNode.port.postMessage({ type: 'SET_CARRIER_SOURCE', value: carrier === 'synth' ? 'internal' : 'external' });
+        this.applyKeyGate();
 
         this.vocoderWorkletNode.port.postMessage({ type: 'SET_CARRIER_WAVEFORM', value: params.carrierWaveform });
+    }
+
+    public setNoteKeyHeld(held: boolean) {
+        if (held === this.noteKeyHeld) return;
+        this.noteKeyHeld = held;
+        this.applyKeyGate();
+    }
+
+    // The key gate only applies to the synth carrier: open fast so notes speak at once, close a bit slower to avoid clicks
+    private applyKeyGate() {
+        const params = this.vocoderParams;
+        const gate = this.vocoderWorkletNode?.parameters.get('keyGate');
+        if (!params || !gate || !this.audioContext) return;
+        const open = !params.keyGate || params.carrier !== 'synth' || this.noteKeyHeld;
+        const now = this.audioContext.currentTime;
+        gate.cancelScheduledValues(now);
+        gate.setTargetAtTime(open ? 1 : 0, now, open ? 0.003 : 0.03);
     }
 
     public startMicVisualizer(canvas: HTMLCanvasElement) {
@@ -433,6 +454,16 @@ export class AudioEngine {
 
     public subscribeMidiOutputs = (listener: (outputNames: string[]) => void): (() => void) =>
         this.midiService.subscribeOutputs(listener);
+
+    public setMidiInput(inputName: string) {
+        this.midiService.setMidiInput(inputName);
+    }
+
+    public subscribeMidiInputs = (listener: (inputNames: string[]) => void): (() => void) =>
+        this.midiService.subscribeInputs(listener);
+
+    public subscribeMidiNotes = (listener: (message: NoteMessage) => void): (() => void) =>
+        this.midiService.subscribeNotes(listener);
 
     /** Seconds to delay MIDI so it lines up with audible output (device latency + manual window.MIDI_LATENCY_OFFSET). */
     private getMidiLatency(): number {

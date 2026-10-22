@@ -1,10 +1,12 @@
 import React, { useRef, useEffect } from 'react';
 import { VocoderParams, VocoderCarrier } from '../types';
-import { WAVEFORMS, WAVEFORM_LABELS } from '../constants';
+import { WAVEFORMS, WAVEFORM_LABELS, SYNTH_PITCH_MIN, SYNTH_PITCH_MAX } from '../constants';
 
 interface VocoderControlsProps {
     params: VocoderParams;
     onParamChange: (param: keyof VocoderParams, value: string | number | boolean) => void;
+    /** Note played by the A key of the PC keyboard */
+    pcKeyboardBase: number;
     startVisualizer: (canvas: HTMLCanvasElement) => void;
     stopVisualizer: () => void;
 }
@@ -47,7 +49,7 @@ const formatMs = (v: number) => `${Math.round(v * 1000)} ms`;
 const formatSemitones = (v: number) => `${v > 0 ? '+' : ''}${v} st`;
 const formatInteger = (v: number) => v.toFixed(0);
 
-const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, onParamChange, startVisualizer, stopVisualizer }) => {
+const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, onParamChange, pcKeyboardBase, startVisualizer, stopVisualizer }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const carriers: { id: VocoderCarrier, label: string }[] = [
         { id: 'drums', label: 'Drums' },
@@ -111,7 +113,7 @@ const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, on
                     <ParamSlider
                         id="vocoder-pitch"
                         label="Synth Pitch"
-                        min={24} max={72} step={1}
+                        min={SYNTH_PITCH_MIN} max={SYNTH_PITCH_MAX} step={1}
                         value={params.synthPitch}
                         onChange={(v) => onParamChange('synthPitch', v)}
                         format={formatNote}
@@ -132,6 +134,21 @@ const VocoderControls: React.FC<VocoderControlsProps> = React.memo(({ params, on
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="col-span-2 md:col-span-4 flex items-center gap-3">
+                        <button
+                            onClick={() => onParamChange('keyGate', !params.keyGate)}
+                            disabled={!params.enabled || params.carrier !== 'synth'}
+                            aria-pressed={params.keyGate}
+                            title="Gate: o vocoder só soa mentres mantés unha tecla pulsada"
+                            className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${params.keyGate ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 hover:bg-gray-600'}`}
+                        >
+                            Gate {params.keyGate ? 'ON' : 'OFF'}
+                        </button>
+                        <p className="text-xs text-gray-500">
+                            Toca Synth Pitch co teclado MIDI ou co do PC: fila A–Ñ (A = {formatNote(pcKeyboardBase)}), W E T Y U O P para as negras, Z / X baixan ou soben a oitava.
+                        </p>
                     </div>
                 </div>
 

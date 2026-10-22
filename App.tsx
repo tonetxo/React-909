@@ -6,13 +6,19 @@ import PatternControls from './components/PatternControls';
 import SongSequencer from './components/SongSequencer';
 import BasslineSequencer from './components/BasslineSequencer';
 import VocoderControls from './components/VocoderControls';
-import MidiOutputSelector from './components/MidiOutputSelector';
+import MidiPortSelector from './components/MidiPortSelector';
 import { Velocity, InstrumentParams, Pattern, ProjectData, BasslineParams, Waveform, VocoderParams, TimeSignature } from './types';
-import { INITIAL_VOCODER_PARAMS } from './constants';
+import { INITIAL_VOCODER_PARAMS, SYNTH_PITCH_MIN, SYNTH_PITCH_MAX } from './constants';
 import { audioEngine } from './services/audioService';
+import { ALL_MIDI_INPUTS } from './services/MidiService';
+import { HeldNotes, fitToRange, pcKeyToNote, PC_OCTAVE_DOWN, PC_OCTAVE_UP } from './services/noteInput';
 import { NUM_PATTERNS, SONG_STEPS, stepsFromTimeSig, resizeSequence, emptyBasslineStep, createDefaultPattern, createDefaultProject, parseProjectData, serializeProject } from './services/projectIO';
 
 const PROJECT_STORAGE_KEY = 'gemini-groove-project';
+
+const MIDI_OUTPUT_OPTIONS = [{ value: '', label: 'None (Disabled)' }];
+const MIDI_INPUT_OPTIONS = [{ value: ALL_MIDI_INPUTS, label: 'All inputs' }, { value: '', label: 'None (Disabled)' }];
+const DEFAULT_PC_KEYBOARD_BASE = 48; // the A key plays C3
 
 const App: React.FC = () => {
   const [timeSignature, setTimeSignature] = useState<TimeSignature>([4, 4]);
@@ -29,6 +35,10 @@ const App: React.FC = () => {
   const [masterVolume, setMasterVolume] = useState<number>(0.7);
 
   const [vocoderParams, setVocoderParams] = useState<VocoderParams>(JSON.parse(JSON.stringify(INITIAL_VOCODER_PARAMS)));
+  const [pcKeyboardBase, setPcKeyboardBase] = useState<number>(DEFAULT_PC_KEYBOARD_BASE);
+  // Latest vocoder params for the note input listeners, which live outside React's render cycle
+  const vocoderParamsRef = useRef(vocoderParams);
+  vocoderParamsRef.current = vocoderParams;
 
   // --- Derived State ---
   const activePattern = patterns[selectedPatternIndex] ?? createDefaultPattern(timeSignature);
@@ -355,6 +365,80 @@ const App: React.FC = () => {
     sequencerEngine.setMidiOutput(outputName);
   }, [sequencerEngine]);
 
+  const handleMidiInputChange = useCallback((inputName: string) => {
+    audioEngine.setMidiInput(inputName);
+  }, [audioEngine]);
+
+  // --- Note input (MIDI keyboard / PC keyboard) plays the vocoder's Synth Pitch ---
+  const setSynthPitch = useCallback((note: number) => {
+    const synthPitch = fitToRange(note, SYNTH_PITCH_MIN, SYNTH_PITCH_MAX);
+    if (vocoderParamsRef.current.synthPitch === synthPitch) return;
+    const newParams = { ...vocoderParamsRef.current, synthPitch };
+    vocoderParamsRef.current = newParams;
+    setVocoderParams(newParams);
+    audioEngine.updateVocoderParams(newParams);
+  }, [audioEngine]);
+
+  // Held keys per source; the vocoder key gate is open while any of them holds a note
+  const midiHeldRef = useRef(new HeldNotes());
+  const pcHeldRef = useRef(new HeldNotes());
+  const updateNoteKeyHeld = useCallback(() => {
+    audioEngine.setNoteKeyHeld(!midiHeldRef.current.isEmpty || !pcHeldRef.current.isEmpty);
+  }, [audioEngine]);
+
+  useEffect(() => {
+    const held = midiHeldRef.current;
+    return audioEngine.subscribeMidiNotes(({ note, on }) => {
+      const current = on ? held.press(note) : held.release(note);
+      if (current !== null) setSynthPitch(current);
+      updateNoteKeyHeld();
+    });
+  }, [audioEngine, setSynthPitch, updateNoteKeyHeld]);
+
+  const pcKeyboardBaseRef = useRef(pcKeyboardBase);
+  pcKeyboardBaseRef.current = pcKeyboardBase;
+
+  useEffect(() => {
+    const held = pcHeldRef.current;
+    // Note per key code, as pressed: releasing must stop that note even if the octave changed meanwhile
+    const pressed = new Map<string, number>();
+    const isTyping = (target: EventTarget | null) =>
+      target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName));
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
+      if (e.code === PC_OCTAVE_DOWN || e.code === PC_OCTAVE_UP) {
+        const step = e.code === PC_OCTAVE_UP ? 12 : -12;
+        setPcKeyboardBase(base => Math.min(Math.max(base + step, SYNTH_PITCH_MIN), SYNTH_PITCH_MAX - 12));
+        return;
+      }
+      const note = pcKeyToNote(e.code, pcKeyboardBaseRef.current);
+      if (note === undefined) return;
+      pressed.set(e.code, note);
+      setSynthPitch(held.press(note));
+      updateNoteKeyHeld();
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const note = pressed.get(e.code);
+      if (note === undefined) return;
+      pressed.delete(e.code);
+      const current = held.release(note);
+      if (current !== null) setSynthPitch(current);
+      updateNoteKeyHeld();
+    };
+    // Keys released while the window is unfocused never send keyup
+    const handleBlur = () => { held.clear(); pressed.clear(); updateNoteKeyHeld(); };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [setSynthPitch, updateNoteKeyHeld]);
+
   // --- Bassline Handlers ---
   const handleBasslineParamChange = useCallback((param: keyof BasslineParams, value: number | Waveform | boolean) => {
     updateCurrentPattern(p => ({ ...p, bassline: { ...p.bassline!, params: { ...p.bassline!.params, [param]: value } } }));
@@ -416,7 +500,10 @@ const App: React.FC = () => {
         </header>
         <main className="space-y-6 flex flex-col items-center">
           <TransportControls isPlaying={isPlaying} onPlayToggle={handlePlayToggle} tempo={tempo} onTempoChange={handleTempoChange} swing={swing} onSwingChange={handleSwingChange} timeSignature={timeSignature} onTimeSignatureChange={handleTimeSignatureChange} masterVolume={masterVolume} onMasterVolumeChange={handleMasterVolumeChange} />
-          <MidiOutputSelector onOutputSelect={handleMidiOutputChange} subscribeOutputs={audioEngine.subscribeMidiOutputs} />
+          <div className="flex flex-col md:flex-row gap-4">
+            <MidiPortSelector id="midi-output" label="MIDI Output" fixedOptions={MIDI_OUTPUT_OPTIONS} onSelect={handleMidiOutputChange} subscribePorts={audioEngine.subscribeMidiOutputs} />
+            <MidiPortSelector id="midi-input" label="MIDI Input" fixedOptions={MIDI_INPUT_OPTIONS} onSelect={handleMidiInputChange} subscribePorts={audioEngine.subscribeMidiInputs} />
+          </div>
           <PatternControls patterns={patterns} selectedPatternIndex={selectedPatternIndex} onLoad={handleLoadPattern} onSave={handleSavePattern} onExport={handleExportPatterns} onImport={handleImportPatterns} onCopy={handleCopyPattern} onPaste={handlePastePattern} isClipboardEmpty={clipboard === null} isPlaying={isPlaying} onReset={handleReset} />
           <SongSequencer sequence={songSequence} isActive={isSongModeActive} isLooping={isSongLooping} currentStep={currentSongStep} onToggle={handleToggleSongMode} onToggleLoop={handleToggleSongLoop} onStepClick={handleSongStepClick} onClear={handleClearSong} />
 
@@ -427,6 +514,7 @@ const App: React.FC = () => {
               <VocoderControls
                 params={vocoderParams}
                 onParamChange={handleVocoderParamChange}
+                pcKeyboardBase={pcKeyboardBase}
                 startVisualizer={startMicVisualizer}
                 stopVisualizer={stopMicVisualizer}
               />

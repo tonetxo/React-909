@@ -252,6 +252,10 @@ export const getInitialBasslinePattern = (steps: number): BasslinePattern => ({
   }
 });
 
+// Synth Pitch range (MIDI notes); played notes outside it are moved by octaves into it
+export const SYNTH_PITCH_MIN = 24; // C1
+export const SYNTH_PITCH_MAX = 84; // C6
+
 export const INITIAL_VOCODER_PARAMS: VocoderParams = {
   enabled: false,
   carrier: 'synth',
@@ -259,6 +263,7 @@ export const INITIAL_VOCODER_PARAMS: VocoderParams = {
   formantShift: 0,
   synthPitch: 48, // C3
   carrierWaveform: 'sawtooth',
+  keyGate: false,
   voiceGain: 30,
   noiseGate: 5,
   attack: 0.003,

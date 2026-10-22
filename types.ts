@@ -91,6 +91,7 @@ export interface VocoderParams {
   sibilance: number;
   qFactor: number;
   carrierWaveform: Waveform; // internal synth carrier
+  keyGate: boolean; // synth carrier only sounds while a note key is held
 }
 
 export interface ProjectData {

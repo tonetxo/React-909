@@ -11,7 +11,7 @@ GrooveGal (display name "O Grove Son") is a TR-909-inspired web drum machine / s
 - `npm run build` / `npm run preview` — production build to `dist/`
 - `npm run electron:build` — build + electron-builder (AppImage / NSIS) into `release/`
 - `npx tsc --noEmit` — typecheck (`noUnusedLocals` is on). No linter/formatter.
-- `npm test` — Vitest (`vitest run`). Single file: `npx vitest run services/projectIO.test.ts`; single test: add `-t "<name>"`. Tests cover the pure project load/validation code; the root `.json` exports are used as fixtures.
+- `npm test` — Vitest (`vitest run`). Single file: `npx vitest run services/projectIO.test.ts`; single test: add `-t "<name>"`. Tests cover the pure project load/validation code (the root `.json` exports are used as fixtures) and the note input helpers.
 - `bash validate-sync-fixes.sh` — grep-based check that MIDI sync fixes are still present; MIDI helpers: `bash check-midi-clock.sh`, `bash cleanup-midi.sh` (kills zombie MIDI slave processes)
 
 ## Architecture
@@ -33,7 +33,7 @@ Three layers, top to bottom:
 ### AudioWorklets
 
 - `services/vocoder-processor.js` (registers `vocoder-processor-new`) is the only worklet, loaded at runtime via `addModule(new URL('./vocoder-processor.js', import.meta.url))`. Input 0 is the mic (modulator), input 1 the external carrier: `drumBus`/`bassBus` feed it through gains set from the Carrier choice (Drums/Bass/Both); Synth uses the internal oscillator at Synth Pitch / Synth Wave (`SET_CARRIER_SOURCE` / `SET_CARRIER_WAVEFORM` port messages; `WAVEFORM_TRIM` levels the waveforms). Each carrier band is normalised by its own envelope, so any carrier works. Formant shifts the carrier bands relative to the modulator bands (`formantShift` param, semitones). Vocoder defaults live in `INITIAL_VOCODER_PARAMS` (`constants.ts`); keep them in step with the worklet's `parameterDescriptors`.
-- MIDI output listing goes through `MidiService.subscribeOutputs` (exposed as `audioEngine.subscribeMidiOutputs`), which also handles hot-plug.
+- MIDI output listing goes through `MidiService.subscribeOutputs` (exposed as `audioEngine.subscribeMidiOutputs`), which also handles hot-plug. MIDI input works the same way (`subscribeInputs` / `setMidiInput`, default all inputs) and `subscribeNotes` delivers note on/off, ignoring channel 10. `App.tsx` uses it, plus the PC keyboard, to play the vocoder's Synth Pitch with mono last-note priority; with `keyGate` on, `audioEngine.setNoteKeyHeld` ramps the worklet's `keyGate` param so the synth carrier only sounds while a key is held. The pure note logic (`HeldNotes`, `parseNoteMessage`, PC key map) is in `services/noteInput.ts` and is tested.
 - Vite emits the worklet as a hashed asset (`dist/assets/vocoder-processor-[hash].js`) because of the `new URL(..., import.meta.url)` pattern; no Rollup entry is needed. Load any new worklet the same way.
 
 ### Electron / MIDI

@@ -127,6 +127,8 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
             { name: 'carrierFreq', defaultValue: 110, minValue: 30, maxValue: 1100 },
             // Semitones: moves the carrier bands relative to the modulator bands (voice size/timbre)
             { name: 'formantShift', defaultValue: 0, minValue: -12, maxValue: 12 },
+            // 0..1 multiplier on the vocoded output, automated by the app for the key gate (a-rate: smooth ramps)
+            { name: 'keyGate', defaultValue: 1, minValue: 0, maxValue: 1 },
         ];
     }
 
@@ -251,6 +253,7 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
         const carrierAttackCoeff = this.carrierAttackCoeff, carrierReleaseCoeff = this.carrierReleaseCoeff;
         const carrierTrim = this.useExternalCarrier ? 1 : WAVEFORM_TRIM[this.carrierOsc.type] ?? 1;
         const bandGain = voiceGain * OUTPUT_GAIN * carrierTrim;
+        const keyGate = parameters.keyGate;
 
         for (let i = 0; i < output.length; i++) {
             const drySample = modulatorInput[i];
@@ -308,7 +311,7 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
                 (gateTarget > this.gateGain ? this.gateOpenCoeff : this.gateCloseCoeff);
 
             // Soft clip so loud input saturates gently instead of clipping
-            const wet = Math.tanh(wetSignal * bandGain * this.gateGain);
+            const wet = Math.tanh(wetSignal * bandGain * this.gateGain) * (keyGate.length > 1 ? keyGate[i] : keyGate[0]);
             output[i] = drySample * (1 - dryWet) + wet * dryWet;
         }
 

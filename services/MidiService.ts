@@ -1,8 +1,15 @@
+import { NoteMessage, parseNoteMessage } from './noteInput';
+
+/** Input selection value meaning "listen to every input". */
+export const ALL_MIDI_INPUTS = '*';
 
 export class MidiService {
     private midiAccess: WebMidi.MIDIAccess | null = null;
     private midiOutput: WebMidi.MIDIOutput | null = null;
     private outputListeners = new Set<(outputNames: string[]) => void>();
+    private inputListeners = new Set<(inputNames: string[]) => void>();
+    private noteListeners = new Set<(message: NoteMessage) => void>();
+    private selectedInput = ALL_MIDI_INPUTS;
 
     constructor() {
         this.init();
@@ -18,9 +25,15 @@ export class MidiService {
             this.midiAccess = await navigator.requestMIDIAccess();
             console.log("MIDI Access granted.");
             this.listMidiOutputs();
-            // Hot-plug: refresh the output list whenever a device appears or disappears
-            this.midiAccess.onstatechange = () => this.notifyOutputs();
+            // Hot-plug: refresh the port lists and input handlers whenever a device appears or disappears
+            this.midiAccess.onstatechange = () => {
+                this.notifyOutputs();
+                this.notifyInputs();
+                this.attachInputs();
+            };
             this.notifyOutputs();
+            this.notifyInputs();
+            this.attachInputs();
 
             // No auto-selection here. We rely on the UI (MidiOutputSelector) to set the port.
         } catch (error) {
@@ -139,4 +152,48 @@ export class MidiService {
         const outputNames = this.getAvailableOutputs();
         this.outputListeners.forEach(listener => listener(outputNames));
     }
+
+    // --- Input (note messages from a MIDI keyboard) ---
+
+    public getAvailableInputs(): string[] {
+        if (!this.midiAccess) return [];
+        return Array.from(this.midiAccess.inputs.values()).map(input => input.name ?? input.id);
+    }
+
+    /** Selects the input to listen to: a port name, ALL_MIDI_INPUTS, or '' for none. */
+    public setMidiInput(inputName: string): void {
+        this.selectedInput = inputName;
+        this.attachInputs();
+    }
+
+    /** Calls `listener` now and whenever the available inputs change. Returns an unsubscribe function. */
+    public subscribeInputs(listener: (inputNames: string[]) => void): () => void {
+        this.inputListeners.add(listener);
+        listener(this.getAvailableInputs());
+        return () => { this.inputListeners.delete(listener); };
+    }
+
+    /** Calls `listener` for every note on/off from the selected input(s). Returns an unsubscribe function. */
+    public subscribeNotes(listener: (message: NoteMessage) => void): () => void {
+        this.noteListeners.add(listener);
+        return () => { this.noteListeners.delete(listener); };
+    }
+
+    private notifyInputs(): void {
+        const inputNames = this.getAvailableInputs();
+        this.inputListeners.forEach(listener => listener(inputNames));
+    }
+
+    private attachInputs(): void {
+        if (!this.midiAccess) return;
+        for (const input of this.midiAccess.inputs.values()) {
+            const selected = this.selectedInput === ALL_MIDI_INPUTS || (input.name ?? input.id) === this.selectedInput;
+            input.onmidimessage = selected ? this.handleMidiMessage : null;
+        }
+    }
+
+    private handleMidiMessage = (event: WebMidi.MIDIMessageEvent): void => {
+        const message = parseNoteMessage(event.data);
+        if (message) this.noteListeners.forEach(listener => listener(message));
+    };
 }
