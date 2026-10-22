@@ -251,7 +251,7 @@ export const getInitialBasslinePattern = (steps: number): BasslinePattern => ({
 
 export const INITIAL_VOCODER_PARAMS: VocoderParams = {
   enabled: false,
-  carrier: 'drums',
+  carrier: 'synth',
   mix: 0.5,
   bands: 16,
   formantShift: 0,

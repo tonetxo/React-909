@@ -6,7 +6,7 @@ export interface SynthesisChannelStrip {
     input: GainNode;
 }
 
-const midiToFreq = (midi: number) => {
+export const midiToFreq = (midi: number) => {
     return Math.pow(2, (midi - 69) / 12) * 440;
 };
 

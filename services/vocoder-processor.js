@@ -1,7 +1,8 @@
 // services/vocoder-processor.js
 //
-// Channel vocoder: the mic (modulator) is split into bands, and each band's envelope
-// is imposed on the same band of an internal oscillator (carrier).
+// Channel vocoder: the mic (modulator, input 0) is split into bands, and each band's envelope
+// is imposed on the same band of the carrier: either the internal oscillator or input 1
+// (the app routes the drum and/or bass buses there).
 // The per-sample band loop works on flat typed arrays: it runs NUM_BANDS * 4 biquads per sample.
 
 const NUM_BANDS = 24;
@@ -104,13 +105,14 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
             { name: 'sibilance', defaultValue: 0.5, minValue: 0, maxValue: 1 },
             { name: 'dryWet', defaultValue: 1.0, minValue: 0, maxValue: 1 },
             { name: 'qFactor', defaultValue: 5, minValue: 1, maxValue: 12 },
-            { name: 'carrierFreq', defaultValue: 110, minValue: 40, maxValue: 500 },
+            { name: 'carrierFreq', defaultValue: 110, minValue: 30, maxValue: 1100 },
         ];
     }
 
     constructor() {
         super();
         this.carrierOsc = new Oscillator();
+        this.useExternalCarrier = false;
         this.modulatorHighpass = new Highpass(70);
 
         // Constant 0 dB peak bandpass (RBJ): b1 = 0 and b2 = -b0, so only b0, a1, a2 are stored.
@@ -155,6 +157,8 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
         this.port.onmessage = (event) => {
             if (event.data.type === 'SET_CARRIER_WAVEFORM') {
                 this.carrierOsc.type = event.data.value;
+            } else if (event.data.type === 'SET_CARRIER_SOURCE') {
+                this.useExternalCarrier = event.data.value === 'external';
             }
         };
     }
@@ -185,6 +189,8 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
 
     process(inputs, outputs, parameters) {
         const modulatorInput = inputs[0][0];
+        // Undefined while nothing is playing into input 1
+        const externalCarrier = this.useExternalCarrier ? inputs[1] && inputs[1][0] : undefined;
         const output = outputs[0][0];
 
         if (!modulatorInput) {
@@ -221,7 +227,9 @@ class VocoderProcessorNew extends AudioWorkletProcessor {
         for (let i = 0; i < output.length; i++) {
             const drySample = modulatorInput[i];
             const modulatorSample = this.modulatorHighpass.process(drySample);
-            const oscSample = this.carrierOsc.process();
+            const oscSample = this.useExternalCarrier
+                ? (externalCarrier ? externalCarrier[i] : 0)
+                : this.carrierOsc.process();
             const noiseSample = noiseAmount > 0 ? (Math.random() * 2 - 1) * noiseAmount : 0;
 
             let wetSignal = 0;

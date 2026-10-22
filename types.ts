@@ -96,7 +96,6 @@ export interface VocoderParams {
   sibilance?: number;
   dryWet?: number;
   qFactor?: number;
-  carrierFreq?: number;
   carrierWaveform?: Waveform;
 }
 

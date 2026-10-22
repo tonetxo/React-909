@@ -1,5 +1,5 @@
 import { Velocity, InstrumentParams, BasslineStep, BasslineParams, VocoderParams, VocoderType, Instrument, BasslinePattern } from '../types';
-import { playInstrument, BasslineSynth } from './synthesis';
+import { playInstrument, BasslineSynth, midiToFreq } from './synthesis';
 import { MidiService } from './MidiService';
 
 type StepCallback = (step: number) => void;
@@ -35,6 +35,9 @@ export class AudioEngine {
     private vocoderWorkletNode: AudioWorkletNode | null = null;
     private vocoderEnabled = false;
     private vocoderParams: VocoderParams | null = null;
+    // Route the drum / bass buses into the vocoder's carrier input (gain 0 or 1, set by the Carrier choice)
+    private drumCarrierGain: GainNode | null = null;
+    private bassCarrierGain: GainNode | null = null;
     private basslineSynth: BasslineSynth;
 
     private micStream: MediaStream | null = null;
@@ -175,12 +178,24 @@ export class AudioEngine {
         try {
             await this.audioContext.audioWorklet.addModule(new URL('./vocoder-processor.js', import.meta.url));
 
+            // Input 0: mic (modulator), input 1: external carrier; both downmixed to mono
             this.vocoderWorkletNode = new AudioWorkletNode(this.audioContext, 'vocoder-processor-new', {
-                numberOfInputs: 1,
+                numberOfInputs: 2,
                 numberOfOutputs: 1,
                 outputChannelCount: [1],
+                channelCount: 1,
+                channelCountMode: 'explicit',
                 processorOptions: { sampleRate: this.audioContext.sampleRate }
             });
+
+            this.drumCarrierGain = this.audioContext.createGain();
+            this.bassCarrierGain = this.audioContext.createGain();
+            this.drumCarrierGain.gain.value = 0;
+            this.bassCarrierGain.gain.value = 0;
+            this.drumBus?.connect(this.drumCarrierGain);
+            this.bassBus?.connect(this.bassCarrierGain);
+            this.drumCarrierGain.connect(this.vocoderWorkletNode, 0, 1);
+            this.bassCarrierGain.connect(this.vocoderWorkletNode, 0, 1);
             this.applyVocoderParams();
 
             console.log("Vocoder AudioWorklet initialized.");
@@ -355,7 +370,12 @@ export class AudioEngine {
         p.get('sibilance')?.setTargetAtTime(params.sibilance ?? 0.5, now, 0.01);
         p.get('dryWet')?.setTargetAtTime(params.mix, now, 0.01);
         p.get('qFactor')?.setTargetAtTime(params.qFactor ?? 5, now, 0.01);
-        p.get('carrierFreq')?.setTargetAtTime(params.carrierFreq ?? 110, now, 0.01);
+        p.get('carrierFreq')?.setTargetAtTime(midiToFreq(params.synthPitch), now, 0.01);
+
+        const { carrier } = params;
+        this.drumCarrierGain?.gain.setTargetAtTime(carrier === 'drums' || carrier === 'both' ? 1 : 0, now, 0.01);
+        this.bassCarrierGain?.gain.setTargetAtTime(carrier === 'bass' || carrier === 'both' ? 1 : 0, now, 0.01);
+        this.vocoderWorkletNode.port.postMessage({ type: 'SET_CARRIER_SOURCE', value: carrier === 'synth' ? 'internal' : 'external' });
 
         if (params.carrierWaveform) {
             this.vocoderWorkletNode.port.postMessage({ type: 'SET_CARRIER_WAVEFORM', value: params.carrierWaveform });

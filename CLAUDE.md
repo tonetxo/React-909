@@ -32,7 +32,7 @@ Three layers, top to bottom:
 
 ### AudioWorklets
 
-- `services/vocoder-processor.js` (registers `vocoder-processor-new`) is the only worklet, loaded at runtime via `addModule(new URL('./vocoder-processor.js', import.meta.url))`. Its carrier is an internal oscillator; the UI's vocoder type / carrier source options are not wired to it yet.
+- `services/vocoder-processor.js` (registers `vocoder-processor-new`) is the only worklet, loaded at runtime via `addModule(new URL('./vocoder-processor.js', import.meta.url))`. Input 0 is the mic (modulator), input 1 the external carrier: `drumBus`/`bassBus` feed it through gains set from the Carrier choice (Drums/Bass/Both); Synth uses the internal oscillator at Synth Pitch (`SET_CARRIER_SOURCE` port message). Each carrier band is normalised by its own envelope, so any carrier works. The UI's vocoder Type toggle and Formant are not wired yet.
 - MIDI output listing goes through `MidiService.subscribeOutputs` (exposed as `audioEngine.subscribeMidiOutputs`), which also handles hot-plug.
 - Worklets are separate Rollup inputs in `vite.config.ts` with unhashed output `services/[name].js`; keep that mapping if adding/renaming one (electron-builder also packages `services/*.js`).
 
