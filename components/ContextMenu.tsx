@@ -22,16 +22,29 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ items, x, y, onClose }) => {
         onClose();
       }
     };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    // The menu is fixed to the viewport, so close it if the page moves underneath
+    const handleScroll = () => onClose();
+
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleScroll);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleScroll);
     };
   }, [onClose]);
 
   return (
     <div
       ref={menuRef}
-      className="absolute z-50 bg-gray-800 border border-gray-700 rounded-md shadow-lg"
+      // clientX/clientY are viewport coordinates, so position relative to the viewport
+      className="fixed z-50 bg-gray-800 border border-gray-700 rounded-md shadow-lg"
       style={{ top: y, left: x }}
     >
       <ul className="py-1">
