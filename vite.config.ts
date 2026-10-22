@@ -66,14 +66,14 @@ export default defineConfig(() => {
     ],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       }
     },
     build: {
       rollupOptions: {
         input: {
-          main: path.resolve(__dirname, 'index.html'),
-          'vocoder-processor': path.resolve(__dirname, 'services/vocoder-processor.js'),
+          main: path.resolve(import.meta.dirname, 'index.html'),
+          'vocoder-processor': path.resolve(import.meta.dirname, 'services/vocoder-processor.js'),
         },
         output: {
           entryFileNames: (chunkInfo) => {
